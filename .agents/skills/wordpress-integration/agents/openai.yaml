@@ -1,0 +1,4 @@
+interface:
+  display_name: "WordPress Integration"
+  short_description: "Manter a integração WordPress segura"
+  default_prompt: "Use $wordpress-integration para alterar páginas, posts, mídias e políticas do módulo WordPress."

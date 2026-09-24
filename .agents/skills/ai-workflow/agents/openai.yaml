@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Workflow"
+  short_description: "Manter o fluxo assistido por IA"
+  default_prompt: "Use $ai-workflow para manter AGENTS.md, .specs e o fluxo de validação deste repositório."

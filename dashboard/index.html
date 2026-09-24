@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sarah MCP — Painel local</title>
+  <style>
+    :root { color-scheme: light; --ink:#172321; --muted:#64706d; --paper:#f3f1ea; --card:#fffdf8; --line:#dcd9cf; --green:#176b55; --green-soft:#ddefe6; --amber:#a85f13; --amber-soft:#fff0d7; --red:#a53b36; --shadow:0 18px 60px rgba(42,54,49,.10); }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; background:radial-gradient(circle at 80% 0,#dcece4 0,transparent 32rem),var(--paper); color:var(--ink); font:15px/1.55 Inter,Segoe UI,Arial,sans-serif; }
+    button,input { font:inherit; }
+    .shell { width:min(1180px,calc(100% - 32px)); margin:0 auto; padding:26px 0 72px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:54px; }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:-.02em; }
+    .mark { display:grid; place-items:center; width:38px; height:38px; border-radius:12px; color:white; background:var(--green); box-shadow:0 8px 22px rgba(23,107,85,.23); }
+    .local { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; }
+    .dot { width:9px; height:9px; border-radius:50%; background:#20a477; box-shadow:0 0 0 5px rgba(32,164,119,.12); }
+    .hero { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr); gap:30px; align-items:end; margin-bottom:26px; }
+    .eyebrow { color:var(--green); font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+    h1 { margin:8px 0 16px; max-width:760px; font-size:clamp(38px,6vw,70px); line-height:.98; letter-spacing:-.055em; }
+    .lead { max-width:680px; margin:0; color:var(--muted); font-size:18px; }
+    .hero-action { padding:22px; border:1px solid var(--line); border-radius:22px; background:rgba(255,253,248,.78); backdrop-filter:blur(12px); }
+    .hero-action p { margin:0 0 14px; color:var(--muted); font-size:13px; }
+    .button { width:100%; border:0; border-radius:12px; padding:13px 18px; cursor:pointer; color:white; background:var(--green); font-weight:750; box-shadow:0 8px 18px rgba(23,107,85,.18); }
+    .button:hover { background:#115b48; }
+    .button:disabled { cursor:wait; opacity:.7; }
+    .updated { min-height:20px; margin-top:10px; color:var(--muted); font-size:12px; text-align:center; }
+    .summary { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:24px 0; }
+    .stat,.panel { border:1px solid var(--line); background:var(--card); box-shadow:var(--shadow); }
+    .stat { padding:19px 20px; border-radius:18px; }
+    .stat strong { display:block; font-size:28px; line-height:1.1; letter-spacing:-.04em; }
+    .stat span { color:var(--muted); font-size:13px; }
+    .notice { display:flex; gap:13px; margin:16px 0 34px; padding:16px 18px; border:1px solid #efc993; border-radius:16px; background:var(--amber-soft); color:#6d4318; }
+    .notice strong { display:block; color:#57310d; }
+    .section { margin-top:50px; }
+    .section-head { display:flex; justify-content:space-between; align-items:end; gap:18px; margin-bottom:18px; }
+    h2 { margin:0; font-size:28px; letter-spacing:-.035em; }
+    .section-head p { margin:4px 0 0; color:var(--muted); }
+    .modules { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+    .panel { border-radius:20px; padding:22px; }
+    .panel-top { display:flex; justify-content:space-between; gap:16px; }
+    .panel h3 { margin:0; font-size:20px; }
+    .badge { align-self:flex-start; padding:5px 9px; border-radius:999px; font-size:12px; font-weight:750; white-space:nowrap; }
+    .ok { color:#0b6149; background:var(--green-soft); }
+    .wait { color:#805019; background:var(--amber-soft); }
+    .bad { color:#842f2b; background:#fae2df; }
+    .module-message { margin:10px 0 18px; color:var(--muted); }
+    .facts { display:flex; flex-wrap:wrap; gap:8px; }
+    .fact { padding:7px 9px; border:1px solid var(--line); border-radius:9px; color:#4d5a56; background:#faf9f4; font-size:12px; }
+    .steps { counter-reset:step; display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+    .step { position:relative; min-height:132px; padding:20px 20px 20px 66px; border:1px solid var(--line); border-radius:18px; background:rgba(255,253,248,.72); }
+    .step::before { counter-increment:step; content:counter(step); position:absolute; left:20px; top:20px; display:grid; place-items:center; width:30px; height:30px; border-radius:10px; color:white; background:var(--green); font-weight:800; }
+    .step strong { display:block; margin-bottom:5px; }
+    .step p { margin:0; color:var(--muted); }
+    code { padding:2px 6px; border-radius:6px; background:#e9e7df; color:#2b403a; font-family:Cascadia Code,Consolas,monospace; font-size:.9em; }
+    .tool-controls { display:flex; gap:10px; }
+    .search { width:min(360px,100%); border:1px solid var(--line); border-radius:11px; padding:10px 13px; background:var(--card); color:var(--ink); outline:none; }
+    .search:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(23,107,85,.11); }
+    .tool-group { margin-top:24px; }
+    .tool-group h3 { margin:0 0 10px; color:var(--green); font-size:13px; letter-spacing:.08em; text-transform:uppercase; }
+    .tool-list { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+    .tool { padding:15px 16px; border:1px solid var(--line); border-radius:14px; background:var(--card); }
+    .tool-name { overflow-wrap:anywhere; font-family:Cascadia Code,Consolas,monospace; font-size:13px; font-weight:700; }
+    .tool p { margin:6px 0 10px; color:var(--muted); font-size:13px; }
+    .tool-kind { color:var(--green); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+    .empty { padding:30px; color:var(--muted); text-align:center; }
+    footer { margin-top:58px; padding-top:18px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; }
+    @media (max-width:760px) { .hero,.modules { grid-template-columns:1fr; } .summary { grid-template-columns:1fr; } .steps,.tool-list { grid-template-columns:1fr; } header { margin-bottom:36px; } .section-head { align-items:start; flex-direction:column; } .tool-controls,.search { width:100%; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand"><span class="mark">S</span><span>Sarah MCP</span></div>
+      <div class="local"><span class="dot"></span> Painel privado neste computador</div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Central de orientação</div>
+        <h1>Seu MCP, explicado sem mistério.</h1>
+        <p class="lead">Confira o que está configurado, teste as conexões e entenda cada ferramenta antes de pedir uma tarefa para a IA.</p>
+      </div>
+      <aside class="hero-action">
+        <p>O teste consulta autenticação e leitura. Ele não cria, edita ou exclui nada.</p>
+        <button class="button" id="probe" type="button">Testar conexões agora</button>
+        <div class="updated" id="updated" aria-live="polite"></div>
+      </aside>
+    </section>
+
+    <section class="summary" aria-label="Resumo">
+      <div class="stat"><strong id="server-state">—</strong><span>servidor local</span></div>
+      <div class="stat"><strong id="module-count">—</strong><span>integrações</span></div>
+      <div class="stat"><strong id="tool-count">—</strong><span>ferramentas MCP</span></div>
+    </section>
+
+    <div class="notice" id="scope-notice">
+      <span>⚠</span>
+      <div><strong>WordPress em modo amplo</strong>Listas vazias permitem todas as páginas, categorias e caminhos locais de mídia. As confirmações de escrita continuam obrigatórias.</div>
+    </div>
+
+    <section class="section">
+      <div class="section-head"><div><h2>Status das integrações</h2><p>“Configurado” confirma apenas que as credenciais existem. Use o botão acima para testar a conexão.</p></div></div>
+      <div class="modules" id="modules"><div class="panel">Carregando…</div></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><h2>Como usar, passo a passo</h2><p>O caminho recomendado para quem está começando.</p></div></div>
+      <div class="steps">
+        <article class="step"><strong>Deixe as credenciais no <code>.env</code></strong><p>O PAT do TFS e a Application Password do WordPress ficam somente neste computador.</p></article>
+        <article class="step"><strong>Use <code>npm run dev</code> para orientação</strong><p>Este painel abre e o processo fica ativo até você pressionar <code>Ctrl+C</code>. Ele não conecta sozinho uma IA.</p></article>
+        <article class="step"><strong>Compile com <code>npm run build</code></strong><p>Isso cria a versão estável em <code>dist/index.js</code>, usada pelo Codex ou outro cliente MCP.</p></article>
+        <article class="step"><strong>Configure o cliente MCP</strong><p>Copie o exemplo de <code>.codex/config.toml.example</code> para a configuração do Codex e reinicie o aplicativo.</p></article>
+        <article class="step"><strong>Comece por consultas</strong><p>Peça para listar work items, consultar áreas, procurar páginas ou localizar mídias antes de testar alterações.</p></article>
+        <article class="step"><strong>Confirme cada escrita</strong><p>A IA prepara e mostra o diff. Só diga <code>CONFIRMO</code> depois de revisar o alvo e as mudanças.</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div><h2>Ferramentas disponíveis</h2><p>Este catálogo vem diretamente do servidor MCP em execução.</p></div>
+        <div class="tool-controls"><input class="search" id="search" type="search" placeholder="Buscar ferramenta ou descrição…" aria-label="Buscar ferramentas"></div>
+      </div>
+      <div id="tools"><div class="empty">Carregando catálogo…</div></div>
+    </section>
+
+    <footer>Este painel escuta somente em <code>127.0.0.1</code>. Ele não mostra credenciais e não oferece botões de escrita.</footer>
+  </main>
+
+  <script>
+    let overview = null;
+    const byId = id => document.getElementById(id);
+    const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[character]);
+    const groupName = name => name.startsWith('tfs_') ? 'TFS / Azure DevOps' : name.startsWith('wordpress_') ? 'WordPress' : 'Núcleo e confirmação';
+    const toolKind = tool => tool.annotations?.readOnlyHint ? 'Leitura' : tool.name.includes('_prepare_') ? 'Preparação segura' : tool.name === 'operations_apply' ? 'Aplicação confirmada' : tool.annotations?.destructiveHint ? 'Lixeira' : 'Operação local';
+
+    function statusBadge(module) {
+      if (!module.configured) return ['Configuração pendente', 'wait'];
+      if (module.reachable === true) return ['Conectado', 'ok'];
+      if (module.reachable === false) return ['Falha na conexão', 'bad'];
+      return ['Configurado', 'wait'];
+    }
+
+    function renderModules(modules) {
+      byId('modules').innerHTML = modules.map(module => {
+        const [label, style] = statusBadge(module);
+        const details = module.details || {};
+        const facts = module.id === 'wordpress'
+          ? [`Páginas: ${details.pageScope === 'all' ? 'todas' : 'restritas'}`, `Posts: ${details.postScope === 'all' ? 'todos' : 'restritos'}`, `Mídia local: ${details.mediaPathScope === 'all' ? 'qualquer caminho' : 'restrita'}`]
+          : details.allowedWorkItemTypes ? [`Perfil: ${details.profile}`, `${details.allowedWorkItemTypes.length} tipos de work item`] : [];
+        return `<article class="panel"><div class="panel-top"><h3>${module.id === 'tfs' ? 'TFS / Azure DevOps' : 'WordPress'}</h3><span class="badge ${style}">${label}</span></div><p class="module-message">${escapeHtml(module.message)}</p><div class="facts">${facts.map(fact => `<span class="fact">${escapeHtml(fact)}</span>`).join('')}</div></article>`;
+      }).join('');
+      const wordpress = modules.find(module => module.id === 'wordpress');
+      const details = wordpress?.details || {};
+      const isOpen = ['pageScope','postScope','mediaPathScope'].some(key => details[key] === 'all');
+      byId('scope-notice').hidden = !isOpen;
+    }
+
+    function renderTools() {
+      const query = byId('search').value.trim().toLocaleLowerCase('pt-BR');
+      const tools = (overview?.tools || []).filter(tool => `${tool.name} ${tool.title || ''} ${tool.description || ''}`.toLocaleLowerCase('pt-BR').includes(query));
+      const groups = ['Núcleo e confirmação','TFS / Azure DevOps','WordPress'];
+      const html = groups.map(group => {
+        const entries = tools.filter(tool => groupName(tool.name) === group);
+        if (entries.length === 0) return '';
+        return `<section class="tool-group"><h3>${group} · ${entries.length}</h3><div class="tool-list">${entries.map(tool => `<article class="tool"><div class="tool-name">${escapeHtml(tool.name)}</div><p>${escapeHtml(tool.description || tool.title || '')}</p><span class="tool-kind">${toolKind(tool)}</span></article>`).join('')}</div></section>`;
+      }).join('');
+      byId('tools').innerHTML = html || '<div class="empty">Nenhuma ferramenta corresponde à busca.</div>';
+    }
+
+    async function loadOverview(probe = false) {
+      const button = byId('probe');
+      button.disabled = true;
+      button.textContent = probe ? 'Testando conexões…' : 'Carregando…';
+      try {
+        const response = await fetch(`/api/overview?probe=${probe}`);
+        if (!response.ok) throw new Error('Falha no painel');
+        overview = await response.json();
+        const modules = overview.status?.modules || [];
+        byId('server-state').textContent = 'Ativo';
+        byId('module-count').textContent = modules.length;
+        byId('tool-count').textContent = overview.tools.length;
+        renderModules(modules);
+        renderTools();
+        byId('updated').textContent = probe ? `Teste concluído às ${new Date(overview.generatedAt).toLocaleTimeString('pt-BR')}` : 'Status local carregado';
+      } catch {
+        byId('server-state').textContent = 'Erro';
+        byId('updated').textContent = 'Não foi possível consultar o servidor.';
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Testar conexões agora';
+      }
+    }
+
+    byId('probe').addEventListener('click', () => loadOverview(true));
+    byId('search').addEventListener('input', renderTools);
+    void loadOverview(false);
+  </script>
+</body>
+</html>

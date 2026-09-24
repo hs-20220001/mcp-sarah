@@ -1,0 +1,4 @@
+interface:
+  display_name: "MCP Development"
+  short_description: "Evoluir o núcleo e ferramentas MCP"
+  default_prompt: "Use $mcp-development para criar ou alterar módulos, ferramentas e contratos deste servidor MCP."

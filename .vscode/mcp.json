@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "mcp-sarah": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": "E:\\localdev\\mcp-sarah"
+    }
+  }
+}

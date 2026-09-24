@@ -1,0 +1,17 @@
+# Lista vazia permite todas as páginas. Informe IDs para restringir às árvores correspondentes.
+allowedPageRootIds: []
+# Lista vazia permite posts de todas as categorias. Informe IDs para restringir.
+allowedPostCategoryIds: []
+allowedStatuses:
+  - draft
+  - pending
+  - private
+  - publish
+  - future
+allowedMediaMimeTypes:
+  - image/png
+  - image/jpeg
+  - image/webp
+  - image/gif
+  - application/pdf
+maxMediaBytes: 10485760

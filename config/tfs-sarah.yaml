@@ -1,0 +1,70 @@
+profile: sarah
+allowedWorkItemTypes:
+  - Epic
+  - Feature
+  - Product Backlog Item
+  - Task
+  - Bug
+descriptionFields:
+  default: System.Description
+  Bug: Microsoft.VSTS.TCM.ReproSteps
+allowedParentTypes:
+  Epic: []
+  Feature:
+    - Epic
+  Product Backlog Item:
+    - Feature
+  Task:
+    - Product Backlog Item
+    - Bug
+  Bug:
+    - Feature
+    - Product Backlog Item
+customFields:
+  size:
+    referenceName: Sarah.Tamanho
+    values:
+      "1": "1 - Mínimo"
+      "2": "2 - Médio"
+      "3": "3 - Máximo"
+  complexity:
+    referenceName: Sarah.Complexidade
+    values:
+      "1": "1 - Baixa"
+      "2": "2 - Moderada"
+      "3": "3 - Alta"
+  uncertainty:
+    referenceName: Sarah.Incerteza
+    values:
+      "1": "1 - Baixa"
+      "2": "2 - Moderada"
+      "3": "3 - Alta"
+  strategicImpact:
+    referenceName: Sarah.ImpactoEstrategico
+    values:
+      "1": "1 - Baixo"
+      "2": "2 - Moderado"
+      "3": "3 - Alto"
+  tangibility:
+    referenceName: Sarah.Tangibilidade
+    values:
+      "1": "1 - Baixa"
+      "2": "2 - Moderada"
+      "3": "3 - Alta"
+  urgency:
+    referenceName: Sarah.Urgencia
+    values:
+      "1": "1 - Baixa"
+      "2": "2 - Moderada"
+      "3": "3 - Alta"
+  effort:
+    referenceName: Microsoft.VSTS.Scheduling.Effort
+  businessValue:
+    referenceName: Microsoft.VSTS.Common.BusinessValue
+  severity:
+    referenceName: Microsoft.VSTS.Common.Severity
+    values:
+      "1": "1 - Critical"
+      "2": "2 - High"
+      "3": "3 - Medium"
+      "4": "4 - Low"

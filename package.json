@@ -1,0 +1,40 @@
+{
+  "name": "mcp-sarah",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Servidor MCP local e modular para integrações Sarah",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx scripts/dev.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:live": "tsx scripts/live-smoke.ts",
+    "inspector": "npm run build && npx --yes @modelcontextprotocol/inspector node dist/index.js",
+    "validate:workflow": "powershell -ExecutionPolicy Bypass -File scripts/validate-ai-workflow.ps1"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.1.0",
+    "dotenv": "^17.2.3",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@modelcontextprotocol/client": "^2.1.0",
+    "@types/node": "^24.10.0",
+    "@vitest/coverage-v8": "^5.0.1",
+    "eslint": "^10.11.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^5.0.1"
+  }
+}

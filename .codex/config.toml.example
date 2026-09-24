@@ -1,0 +1,7 @@
+[mcp_servers.mcp_sarah]
+command = "node"
+args = ["dist/index.js"]
+cwd = "E:\\localdev\\mcp-sarah"
+default_tools_approval_mode = "writes"
+startup_timeout_sec = 20
+tool_timeout_sec = 60

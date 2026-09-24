@@ -1,0 +1,36 @@
+{
+    "github.copilot.chat.commitMessageGeneration.instructions": [
+    {
+      "file": ".vscode/copilot-commit-message.md"
+    }
+  ],
+    "workbench.colorCustomizations": {
+      "activityBar.activeBackground": "#c4e8ec",
+      "activityBar.background": "#c4e8ec",
+      "activityBar.foreground": "#15202b",
+      "activityBar.inactiveForeground": "#15202b99",
+      "activityBarBadge.background": "#d06ec7",
+      "activityBarBadge.foreground": "#15202b",
+      "commandCenter.border": "#15202b99",
+      "sash.hoverBorder": "#c4e8ec",
+      "statusBar.background": "#9dd9e0",
+      "statusBar.foreground": "#15202b",
+      "statusBarItem.hoverBackground": "#76cad4",
+      "statusBarItem.remoteBackground": "#c956bd",
+      "statusBarItem.remoteForeground": "#15202b",
+      "titleBar.activeBackground": "#9dd9e0",
+      "titleBar.activeForeground": "#15202b",
+      "titleBar.inactiveBackground": "#9dd9e099",
+      "titleBar.inactiveForeground": "#15202b99",
+      "activityBarTop.activeBackground": "#c4e8ec",
+      "activityBarTop.background": "#c4e8ec",
+      "activityBarTop.foreground": "#15202b",
+      "activityBarTop.inactiveForeground": "#15202b99",
+      "commandCenter.foreground": "#15202b",
+      "statusBar.debuggingBackground": "#9dd9e0",
+      "statusBar.debuggingForeground": "#15202b",
+      "activityBar.activeBorder": "#15202b",
+      "activityBarTop.activeBorder": "#15202b"
+    },
+    "peacock.color": "#9dd9e0"
+}
