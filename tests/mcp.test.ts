@@ -98,12 +98,23 @@ describe('MCP server', () => {
       const updateWorkItemTool = tools.find(tool => tool.name === 'tfs_prepare_update_work_item')
       expect(createWorkItemTool?.description).toContain('comece a descrição em HTML')
       expect(updateWorkItemTool?.description).toContain('comece a descrição em HTML')
+      const storyHtml = '<p><em>"<strong>Como</strong> [persona], <strong>quero</strong> [objetivo], <strong>para</strong> [benefício]."</em></p>'
+      expect(createWorkItemTool?.description).toContain(storyHtml)
+      expect(updateWorkItemTool?.description).toContain(storyHtml)
       const createFields = (createWorkItemTool?.inputSchema as { properties?: { fields?: { properties?: Record<string, unknown> } } }).properties?.fields?.properties
       const updateFields = (updateWorkItemTool?.inputSchema as { properties?: { fields?: { properties?: Record<string, unknown> } } }).properties?.fields?.properties
+      expect((createFields?.description as { description?: string } | undefined)?.description).toContain(storyHtml)
+      expect((updateFields?.description as { description?: string } | undefined)?.description).toContain(storyHtml)
       expect(createFields).toHaveProperty('acceptanceCriteria')
       expect(updateFields).toHaveProperty('acceptanceCriteria')
       expect(createWorkItemTool?.description).toContain('proponha quatro Tasks')
       expect(createWorkItemTool?.description).toContain('Desenvolvimento, Documentação, Comunicação e Testes')
+      expect(createWorkItemTool?.description).toContain('NÃO acrescente preposições')
+      expect(createWorkItemTool?.description).toContain('somente palavras do próprio título')
+      expect(createWorkItemTool?.description).toContain('descrição breve do que fazer')
+      expect(createWorkItemTool?.description).toContain('a ferramenta herda esses campos do PBI pai')
+      const createTitle = (createWorkItemTool?.inputSchema as { properties?: { title?: { description?: string } } }).properties?.title
+      expect(createTitle?.description).toContain('sem acrescentar preposições')
       expect(updateWorkItemTool?.description).toContain('remainingWork recebe número e blocked recebe boolean')
       expect(tools.find(tool => tool.name === 'tfs_prepare_trash_work_item')?.description).toContain('inclusive Tasks')
       expect(tools.find(tool => tool.name === 'tfs_get_work_item')?.annotations?.readOnlyHint).toBe(true)
@@ -117,6 +128,131 @@ describe('MCP server', () => {
     } finally {
       await client.close()
       await server.close()
+    }
+  })
+
+  it('herda responsável, área e iteração do PBI no diff e no POST de uma Task', async () => {
+    const fetchMock = vi.fn<typeof fetch>()
+    const pbi = {
+      id: 46274,
+      rev: 4,
+      url: 'https://tfs.example/workItems/46274',
+      fields: {
+        'System.WorkItemType': 'Product Backlog Item',
+        'System.Title': 'Fluxo Agendamento Cirurgia',
+        'System.State': 'Committed',
+        'System.AssignedTo': { displayName: 'Pessoa Homônima', uniqueName: 'pessoa@exemplo.org' },
+        'System.AreaPath': 'Sarah\\Cirurgia',
+        'System.IterationPath': 'Sarah\\2026.19',
+      },
+      relations: [],
+    }
+    fetchMock.mockImplementation((input, init) => {
+      const url = requestUrl(input)
+      if (url.includes('/workitems/46274')) return Promise.resolve(response(pbi))
+      if (init?.method === 'POST') return Promise.resolve(response({ id: 46716, rev: 1, fields: { 'System.WorkItemType': 'Task', 'System.Title': 'Comunicação - Fluxo Agendamento Cirurgia' } }))
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const server = await createServer({
+      config: { requestTimeoutMs: 1_000, confirmationTtlMs: 60_000, requireConfirmation: true, configurationIssues: {}, tfs: { organizationUrl: 'https://tfs.example', project: 'Sarah', pat: 'secret', apiVersion: '7.0', policyPath: resolve('config/tfs-sarah.yaml') } },
+      logger,
+    })
+    const client = new Client({ name: 'test-client', version: '1.0.0' })
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await server.connect(serverTransport)
+    await client.connect(clientTransport)
+    try {
+      const prepared = await client.callTool({ name: 'tfs_prepare_create_work_item', arguments: { type: 'Task', title: 'Comunicação - Fluxo Agendamento Cirurgia', fields: { parentId: 46274, customFields: { activity: 'Communication' } } } })
+      expect(prepared.isError).not.toBe(true)
+      const inheritedDiff = (prepared.structuredContent as { diff: Array<{ field: string; after: unknown }> }).diff
+      expect(inheritedDiff.find(entry => entry.field === 'assignedTo')?.after).toBe('pessoa@exemplo.org')
+      expect(inheritedDiff.find(entry => entry.field === 'areaPath')?.after).toBe('Sarah\\Cirurgia')
+      expect(inheritedDiff.find(entry => entry.field === 'iterationPath')?.after).toBe('Sarah\\2026.19')
+      const plan = prepared.structuredContent as { operationId: string; confirmationToken: string }
+      const applied = await client.callTool({ name: 'operations_apply', arguments: { ...plan, confirmation: 'CONFIRMO' } })
+      expect(applied.isError).not.toBe(true)
+      const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')
+      if (typeof post?.[1]?.body !== 'string') throw new Error('POST não realizado.')
+      const patch = JSON.parse(post[1].body) as Array<{ path: string; value: unknown }>
+      expect(patch).toEqual(expect.arrayContaining([
+        { op: 'add', path: '/fields/System.AssignedTo', value: 'pessoa@exemplo.org' },
+        { op: 'add', path: '/fields/System.AreaPath', value: 'Sarah\\Cirurgia' },
+        { op: 'add', path: '/fields/System.IterationPath', value: 'Sarah\\2026.19' },
+      ]))
+    } finally {
+      await client.close()
+      await server.close()
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('preserva campos explícitos e não inventa responsável ausente no PBI', async () => {
+    const fetchMock = vi.fn<typeof fetch>()
+    fetchMock.mockResolvedValue(response({
+      id: 46274,
+      rev: 4,
+      fields: { 'System.WorkItemType': 'Product Backlog Item', 'System.Title': 'Fluxo Agendamento Cirurgia', 'System.AreaPath': 'Sarah\\Cirurgia', 'System.IterationPath': 'Sarah\\2026.19' },
+      relations: [],
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    const server = await createServer({
+      config: { requestTimeoutMs: 1_000, confirmationTtlMs: 60_000, requireConfirmation: true, configurationIssues: {}, tfs: { organizationUrl: 'https://tfs.example', project: 'Sarah', pat: 'secret', apiVersion: '7.0', policyPath: resolve('config/tfs-sarah.yaml') } },
+      logger,
+    })
+    const client = new Client({ name: 'test-client', version: '1.0.0' })
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await server.connect(serverTransport)
+    await client.connect(clientTransport)
+    try {
+      const prepared = await client.callTool({ name: 'tfs_prepare_create_work_item', arguments: {
+        type: 'Task', title: 'Testes - Fluxo Agendamento Cirurgia',
+        fields: { parentId: 46274, assignedTo: null, areaPath: 'Sarah\\Outra', iterationPath: null },
+      } })
+      expect(prepared.isError).not.toBe(true)
+      const diff = (prepared.structuredContent as { diff: Array<{ field: string; after: unknown }> }).diff
+      expect(diff.find(entry => entry.field === 'assignedTo')?.after).toBeNull()
+      expect(diff.find(entry => entry.field === 'areaPath')?.after).toBe('Sarah\\Outra')
+      expect(diff.find(entry => entry.field === 'iterationPath')?.after).toBeNull()
+      expect(diff.filter(entry => ['assignedTo', 'areaPath', 'iterationPath'].includes(entry.field))).toHaveLength(3)
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    } finally {
+      await client.close()
+      await server.close()
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('bloqueia criação se o PBI mudar depois de herdar campos', async () => {
+    const fetchMock = vi.fn<typeof fetch>()
+    let rev = 4
+    fetchMock.mockImplementation((_input, init) => {
+      if (init?.method === 'POST') throw new Error('A escrita não deveria ocorrer.')
+      const currentRev = rev
+      rev += 1
+      return Promise.resolve(response({ id: 46274, rev: currentRev, fields: { 'System.WorkItemType': 'Product Backlog Item', 'System.Title': 'Fluxo Agendamento Cirurgia', 'System.AreaPath': 'Sarah\\Cirurgia' }, relations: [] }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const server = await createServer({
+      config: { requestTimeoutMs: 1_000, confirmationTtlMs: 60_000, requireConfirmation: true, configurationIssues: {}, tfs: { organizationUrl: 'https://tfs.example', project: 'Sarah', pat: 'secret', apiVersion: '7.0', policyPath: resolve('config/tfs-sarah.yaml') } },
+      logger,
+    })
+    const client = new Client({ name: 'test-client', version: '1.0.0' })
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await server.connect(serverTransport)
+    await client.connect(clientTransport)
+    try {
+      const prepared = await client.callTool({ name: 'tfs_prepare_create_work_item', arguments: { type: 'Task', title: 'Testes - Fluxo Agendamento Cirurgia', fields: { parentId: 46274 } } })
+      expect(prepared.isError).not.toBe(true)
+      const plan = prepared.structuredContent as { operationId: string; confirmationToken: string }
+      const applied = await client.callTool({ name: 'operations_apply', arguments: { ...plan, confirmation: 'CONFIRMO' } })
+      expect(applied.isError).toBe(true)
+      expect(applied.structuredContent).toMatchObject({ error: { code: 'CONFLICT' } })
+      expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0)
+    } finally {
+      await client.close()
+      await server.close()
+      vi.unstubAllGlobals()
     }
   })
 

@@ -13,12 +13,13 @@ import type { TfsComment, TfsWorkItem, WorkItemFieldsInput } from './types.js'
 const pageSize = z.number().int().min(1).max(50).default(25)
 const commentText = z.string().min(1).max(100_000).refine(value => value.trim().length > 0, 'O comentário não pode ser vazio.')
 const customValue = z.union([z.string(), z.number(), z.boolean(), z.null()])
-const pbiDescriptionGuidance = 'Para Product Backlog Item (PBI), se o usuário não pedir explicitamente outro formato e houver contexto suficiente, comece a descrição em HTML com <p><em>"Como [persona], quero [objetivo], para [benefício]."</em></p> e, em seguida, acrescente os detalhes do PBI em outros parágrafos. Não invente informações nem altere um formato explicitamente solicitado.'
-const taskGuidance = 'Para Tasks de um PBI, se o usuário não especificar quantidade ou categorias, proponha quatro Tasks: Desenvolvimento, Documentação, Comunicação e Testes. Use type="Task", parentId com o ID do PBI e títulos no padrão "<Categoria> - <resumo curto do título do PBI>". Configure customFields.activity, respectivamente, como Development, Documentation, Communication e Testing. Prepare uma operação separada por Task e siga o fluxo de diff e confirmação antes de aplicar.'
+const pbiDescriptionGuidance = 'Para Product Backlog Item (PBI), se o usuário não pedir explicitamente outro formato e houver contexto suficiente, comece a descrição em HTML com <p><em>"<strong>Como</strong> [persona], <strong>quero</strong> [objetivo], <strong>para</strong> [benefício]."</em></p> e, em seguida, acrescente os detalhes do PBI em outros parágrafos. A frase inteira fica entre aspas e em itálico; destaque somente Como, quero e para também em negrito. Não invente informações nem altere um formato explicitamente solicitado.'
+const taskGuidance = 'Para Tasks de um PBI, se o usuário não especificar quantidade ou categorias, proponha quatro Tasks: Desenvolvimento, Documentação, Comunicação e Testes. Use type="Task", parentId com o ID do PBI e títulos no padrão "<Categoria> - <título reduzido do PBI>". O sufixo deve ter no máximo o tamanho do título do PBI: use somente palavras do próprio título, na mesma ordem, removendo termos se necessário; NÃO acrescente preposições (por exemplo, "Fluxo Agendamento Cirurgia" não vira "Fluxo de Agendamento de Cirurgia"), nem resuma o conteúdo da descrição do PBI. Configure customFields.activity, respectivamente, como Development, Documentation, Communication e Testing. Se houver elementos concretos na descrição ou nos critérios de aceite do PBI, escreva uma descrição breve do que fazer em cada Task; caso contrário, deixe-a ausente, sem inventar etapas. Quando o usuário não informar responsável, área ou iteração, a ferramenta herda esses campos do PBI pai; valores explícitos prevalecem. Prepare uma operação separada por Task e siga o fluxo de diff e confirmação antes de aplicar.'
 const taskFieldsGuidance = 'Para Tasks, customFields.activity aceita Communication, Deployment, Design, Development, Documentation, Requirements ou Testing; remainingWork recebe número e blocked recebe boolean. Esses três aliases são exclusivos de Task.'
+const taskTitleGuidance = 'Para Task filha de PBI, use "<Categoria> - <título reduzido do PBI>". O sufixo usa somente palavras do título do PBI na mesma ordem, sem acrescentar preposições ou outras palavras, e nunca é maior que o título do PBI. Ex.: Comunicação - Fluxo Agendamento Cirurgia.'
 const mutableFieldsSchema = z.object({
-  title: z.string().trim().min(1).max(512).optional(),
-  description: z.string().max(100_000).nullable().optional().describe(pbiDescriptionGuidance),
+  title: z.string().trim().min(1).max(512).optional().describe(taskTitleGuidance),
+  description: z.string().max(100_000).nullable().optional().describe(`${pbiDescriptionGuidance} Para Task, descreva brevemente o trabalho apenas quando o PBI fornecer contexto suficiente; não invente etapas.`),
   acceptanceCriteria: z.string().max(100_000).nullable().optional().describe('Critérios de aceite do work item. No PBI, corresponde ao campo Acceptance Criteria do TFS.'),
   state: z.string().trim().min(1).max(128).nullable().optional(),
   assignedTo: z.string().trim().min(1).max(256).nullable().optional(),
@@ -69,6 +70,12 @@ function fieldDiff(current: TfsWorkItem | null, input: WorkItemFieldsInput): Arr
     return [{ field, before: currentValue, after }]
   })
   return diff
+}
+
+function parentAssignee(value: unknown): string | undefined {
+  if (typeof value === 'string' && value.trim()) return value
+  if (value && typeof value === 'object' && 'uniqueName' in value && typeof value.uniqueName === 'string' && value.uniqueName.trim()) return value.uniqueName
+  return undefined
 }
 
 export class TfsModule implements IntegrationModule {
@@ -277,7 +284,7 @@ export class TfsModule implements IntegrationModule {
     server.registerTool('tfs_prepare_create_work_item', {
       title: 'Preparar criação de work item',
       description: `Valida e prepara a criação de um work item. Não escreve no TFS; devolve diff e token curto. ${pbiDescriptionGuidance} ${taskGuidance}`,
-      inputSchema: z.object({ type: z.string().trim().min(1), title: z.string().trim().min(1).max(512), fields: mutableFieldsSchema.omit({ title: true }).default({}) }),
+      inputSchema: z.object({ type: z.string().trim().min(1), title: z.string().trim().min(1).max(512).describe(taskTitleGuidance), fields: mutableFieldsSchema.omit({ title: true }).default({}) }),
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     }, args => safeToolCall(async () => {
       const client = this.#requireClient()
@@ -285,11 +292,30 @@ export class TfsModule implements IntegrationModule {
       const input = { type: args.type, title: args.title, ...args.fields }
       assertWorkItemType(policy, input.type)
       resolveCustomFields(policy, input.customFields ?? {}, input.type)
-      if (input.parentId) assertParentType(policy, input.type, (await client.getWorkItem(input.parentId)).type)
+      let inheritedParentRev: number | undefined
+      if (input.parentId) {
+        const parentRaw = await client.getRawWorkItem(input.parentId)
+        const parent = client.normalize(parentRaw)
+        assertParentType(policy, input.type, parent.type)
+        if (input.type === 'Task' && parent.type === 'Product Backlog Item') {
+          if (input.assignedTo === undefined) {
+            const assignee = parentAssignee(parentRaw.fields['System.AssignedTo'])
+            if (assignee !== undefined) { input.assignedTo = assignee; inheritedParentRev = parentRaw.rev }
+          }
+          if (input.areaPath === undefined && parent.areaPath) { input.areaPath = parent.areaPath; inheritedParentRev = parentRaw.rev }
+          if (input.iterationPath === undefined && parent.iterationPath) { input.iterationPath = parent.iterationPath; inheritedParentRev = parentRaw.rev }
+        }
+      }
       const plan = await this.context.operations.prepare({
         module: 'tfs', action: 'create_work_item', target: `new:${args.type}`, summary: `Criar ${args.type}: ${args.title}`,
         diff: fieldDiff(null, input),
-        preflight: async () => { if (input.parentId) assertParentType(policy, input.type, (await client.getWorkItem(input.parentId)).type) },
+        preflight: async () => {
+          if (input.parentId) {
+            const parent = await client.getWorkItem(input.parentId)
+            assertParentType(policy, input.type, parent.type)
+            if (inheritedParentRev !== undefined && parent.rev !== inheritedParentRev) throw new AppError('CONFLICT', `A revisão do PBI mudou de ${inheritedParentRev} para ${parent.rev}. Prepare novamente a Task para atualizar os campos herdados.`)
+          }
+        },
         execute: async () => ({ workItem: await client.create(input) as unknown as Record<string, unknown> }),
       })
       return successResult(operationPreparationMessage(this.context.config.requireConfirmation, 'Plano de criação preparado.'), plan)

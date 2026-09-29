@@ -9,7 +9,7 @@
 
 ## Perfil Sarah
 
-`config/tfs-sarah.yaml` permite `Epic`, `Feature`, `Product Backlog Item`, `Task` e `Bug`. Bugs usam `Microsoft.VSTS.TCM.ReproSteps`; os demais tipos usam `System.Description`. Para PBI, a ferramenta orienta o agente a iniciar a descrição em HTML com uma frase de história do usuário entre aspas e em itálico, seguida pelos detalhes, quando o usuário não pedir outro formato e houver contexto suficiente. Essa orientação não reescreve o conteúdo fornecido. A mesma política declara quais tipos de pai são válidos para cada tipo de item, e essa relação é verificada na preparação e novamente antes da aplicação.
+`config/tfs-sarah.yaml` permite `Epic`, `Feature`, `Product Backlog Item`, `Task` e `Bug`. Bugs usam `Microsoft.VSTS.TCM.ReproSteps`; os demais tipos usam `System.Description`. Para PBI, a ferramenta orienta o agente a iniciar a descrição em HTML com uma frase de história do usuário entre aspas e em itálico, com `Como`, `quero` e `para` também em negrito; depois vêm os detalhes, quando o usuário não pedir outro formato e houver contexto suficiente. Exemplo: `<p><em>"<strong>Como</strong> [persona], <strong>quero</strong> [objetivo], <strong>para</strong> [benefício]."</em></p>`, seguido por outros parágrafos. Essa orientação não reescreve o conteúdo fornecido. A mesma política declara quais tipos de pai são válidos para cada tipo de item, e essa relação é verificada na preparação e novamente antes da aplicação.
 
 ## Campos de PBI
 
@@ -35,7 +35,9 @@ Os reference names e valores ainda dependem do processo e do tipo configurados n
 
 ## Tasks de PBI
 
-Quando o usuário pedir Tasks para um PBI sem definir quantidade ou categorias, a orientação MCP sugere quatro Tasks filhas: Desenvolvimento, Documentação, Comunicação e Testes. Os títulos seguem `<Categoria em português> - <resumo curto do título do PBI>`; cada item usa `type: Task`, `parentId` igual ao ID do PBI e `customFields.activity` com o valor Activity correspondente (`Development`, `Documentation`, `Communication` ou `Testing`). Se o usuário especificar outro recorte, prevalece o pedido explícito.
+Quando o usuário pedir Tasks para um PBI sem definir quantidade ou categorias, a orientação MCP sugere quatro Tasks filhas: Desenvolvimento, Documentação, Comunicação e Testes. Os títulos seguem `<Categoria em português> - <título reduzido do PBI>`: o trecho após o hífen deve ter no máximo o tamanho do título do PBI, usando apenas palavras do próprio título, na mesma ordem, sem introduzir preposições. Por exemplo, para `Fluxo Agendamento Cirurgia`, use `Comunicação - Fluxo Agendamento Cirurgia` ou uma versão mais curta; não use `Fluxo de Agendamento de Cirurgia`. Não derive o título do conteúdo/descrição do PBI. Cada item usa `type: Task`, `parentId` igual ao ID do PBI e `customFields.activity` com o valor Activity correspondente (`Development`, `Documentation`, `Communication` ou `Testing`). Se o usuário especificar outro recorte, prevalece o pedido explícito.
+
+Na preparação de uma nova Task filha de PBI, se não forem informados, `assignedTo`, `areaPath` e `iterationPath` são herdados dos valores existentes no pai. Valores explícitos, inclusive `null`, são preservados. Para responsáveis retornados como identidade, a herança usa `uniqueName` quando disponível e não atribui um usuário por suposição. Os valores herdados constam do diff; caso a revisão do PBI mude antes da aplicação, o plano é bloqueado para permitir nova preparação. Não há herança automática ao editar Tasks existentes nem para Tasks filhas de Bug. A descrição breve de cada Task deve indicar o trabalho a fazer somente se os dados do PBI fundamentarem esse texto; se não houver contexto, é melhor deixá-la vazia do que inventar etapas.
 
 | Campo visível na Task | Alias MCP | Reference name / validação |
 | --- | --- | --- |

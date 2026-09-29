@@ -16,7 +16,7 @@
 - `tfs_get_work_item`: obtém item, relações, descrição, Acceptance Criteria, aliases de custom fields e revisão.
 - `tfs_list_work_item_comments`: lista comentários de um work item com continuation token.
 - `tfs_list_classifications`: consulta áreas ou iterações.
-- `tfs_prepare_create_work_item`: prepara criação; para PBI, orienta a descrição padrão e, para Tasks sem categorias/quantidade especificadas, sugere quatro filhas (Desenvolvimento, Documentação, Comunicação e Testes) com título `<Categoria> - <resumo do PBI>` e Activity correspondente.
+- `tfs_prepare_create_work_item`: prepara criação; para PBI, orienta a história inicial entre aspas e em itálico, com `Como`, `quero` e `para` também em negrito, antes dos detalhes. Para Tasks sem categorias/quantidade especificadas, sugere quatro filhas (Desenvolvimento, Documentação, Comunicação e Testes). O sufixo do título usa apenas palavras do título do PBI, sem adicionar preposições; se houver contexto, a Task pode ter breve descrição do trabalho. Responsável, área e iteração ausentes são herdados do PBI pai, sem sobrepor valores explícitos, e o preflight bloqueia se o pai mudar.
 - `tfs_prepare_update_work_item`: prepara edição; aceita `acceptanceCriteria` e os aliases Task `activity`, `remainingWork` e `blocked`.
 - `tfs_prepare_trash_work_item`: prepara envio recuperável à recycle bin, inclusive de Tasks.
 - `tfs_prepare_create_work_item_comment`: prepara inserção de comentário.

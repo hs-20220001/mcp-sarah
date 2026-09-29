@@ -100,7 +100,7 @@ describe('TfsClient', () => {
       fields: {
         'System.WorkItemType': 'Product Backlog Item',
         'System.Title': 'Agendamento',
-        'System.Description': '<p><em>"Como usuário, quero agendar."</em></p><p>Detalhes.</p>',
+        'System.Description': '<p><em>"<strong>Como</strong> usuário, <strong>quero</strong> agendar, <strong>para</strong> organizar o fluxo."</em></p><p>Detalhes.</p>',
         'Microsoft.VSTS.Common.AcceptanceCriteria': '<p>Critério de aceite.</p>',
         'Microsoft.VSTS.Common.Priority': 2,
         'System.State': 'New',
@@ -115,13 +115,13 @@ describe('TfsClient', () => {
     const result = await client.create({
       type: 'Product Backlog Item',
       title: 'Agendamento',
-      description: '<p><em>"Como usuário, quero agendar."</em></p><p>Detalhes.</p>',
+      description: '<p><em>"<strong>Como</strong> usuário, <strong>quero</strong> agendar, <strong>para</strong> organizar o fluxo."</em></p><p>Detalhes.</p>',
       acceptanceCriteria: '<p>Critério de aceite.</p>',
       customFields: { priority: 2 },
     })
 
     expect(result).toMatchObject({
-      description: '<p><em>"Como usuário, quero agendar."</em></p><p>Detalhes.</p>',
+      description: '<p><em>"<strong>Como</strong> usuário, <strong>quero</strong> agendar, <strong>para</strong> organizar o fluxo."</em></p><p>Detalhes.</p>',
       acceptanceCriteria: '<p>Critério de aceite.</p>',
       customFields: { priority: 2 },
     })
@@ -129,7 +129,7 @@ describe('TfsClient', () => {
     if (typeof init?.body !== 'string') throw new Error('Corpo JSON ausente.')
     const patch = JSON.parse(init.body) as Array<{ path: string; value: unknown }>
     expect(patch).toEqual(expect.arrayContaining([
-      expect.objectContaining({ path: '/fields/System.Description', value: '<p><em>"Como usuário, quero agendar."</em></p><p>Detalhes.</p>' }),
+      expect.objectContaining({ path: '/fields/System.Description', value: '<p><em>"<strong>Como</strong> usuário, <strong>quero</strong> agendar, <strong>para</strong> organizar o fluxo."</em></p><p>Detalhes.</p>' }),
       expect.objectContaining({ path: '/fields/Microsoft.VSTS.Common.AcceptanceCriteria', value: '<p>Critério de aceite.</p>' }),
       expect.objectContaining({ path: '/fields/Microsoft.VSTS.Common.Priority', value: 2 }),
     ]))
