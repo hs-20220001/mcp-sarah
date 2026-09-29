@@ -94,6 +94,18 @@ describe('MCP server', () => {
     try {
       const tools = (await client.listTools()).tools
       expect(tools).toHaveLength(27)
+      const createWorkItemTool = tools.find(tool => tool.name === 'tfs_prepare_create_work_item')
+      const updateWorkItemTool = tools.find(tool => tool.name === 'tfs_prepare_update_work_item')
+      expect(createWorkItemTool?.description).toContain('comece a descrição em HTML')
+      expect(updateWorkItemTool?.description).toContain('comece a descrição em HTML')
+      const createFields = (createWorkItemTool?.inputSchema as { properties?: { fields?: { properties?: Record<string, unknown> } } }).properties?.fields?.properties
+      const updateFields = (updateWorkItemTool?.inputSchema as { properties?: { fields?: { properties?: Record<string, unknown> } } }).properties?.fields?.properties
+      expect(createFields).toHaveProperty('acceptanceCriteria')
+      expect(updateFields).toHaveProperty('acceptanceCriteria')
+      expect(createWorkItemTool?.description).toContain('proponha quatro Tasks')
+      expect(createWorkItemTool?.description).toContain('Desenvolvimento, Documentação, Comunicação e Testes')
+      expect(updateWorkItemTool?.description).toContain('remainingWork recebe número e blocked recebe boolean')
+      expect(tools.find(tool => tool.name === 'tfs_prepare_trash_work_item')?.description).toContain('inclusive Tasks')
       expect(tools.find(tool => tool.name === 'tfs_get_work_item')?.annotations?.readOnlyHint).toBe(true)
       expect(tools.find(tool => tool.name === 'tfs_prepare_update_work_item')?.annotations?.destructiveHint).toBe(false)
       expect(tools.find(tool => tool.name === 'tfs_list_work_item_comments')?.annotations?.readOnlyHint).toBe(true)
@@ -105,6 +117,178 @@ describe('MCP server', () => {
     } finally {
       await client.close()
       await server.close()
+    }
+  })
+
+  it('prepara e aplica criação, edição e remoção recuperável de Task ligada a PBI', async () => {
+    const fetchMock = vi.fn<typeof fetch>()
+    let taskRevision = 0
+    let taskTitle = 'Desenvolvimento - Resumo do PBI'
+    let taskActivity = 'Development'
+    let taskRemainingWork = 5
+    const pbi = {
+      id: 46274,
+      rev: 4,
+      url: 'https://tfs.example/workItems/46274',
+      fields: { 'System.WorkItemType': 'Product Backlog Item', 'System.Title': 'Tornar campo Implante obrigatório', 'System.State': 'Committed' },
+      relations: [],
+    }
+    const task = () => ({
+      id: 46275,
+      rev: taskRevision,
+      url: 'https://tfs.example/workItems/46275',
+      fields: {
+        'System.WorkItemType': 'Task',
+        'System.Title': taskTitle,
+        'System.State': 'To Do',
+        'Microsoft.VSTS.Common.Activity': taskActivity,
+        'Microsoft.VSTS.Scheduling.RemainingWork': taskRemainingWork,
+        'Microsoft.VSTS.CMMI.Blocked': false,
+      },
+      relations: [{ rel: 'System.LinkTypes.Hierarchy-Reverse', url: 'https://tfs.example/_apis/wit/workItems/46274' }],
+    })
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(requestUrl(input))
+      const method = init?.method ?? 'GET'
+      if (method === 'GET' && url.pathname.endsWith('/workitems/46274')) return Promise.resolve(response(pbi))
+      if (method === 'GET' && url.pathname.endsWith('/workitems/46275')) return Promise.resolve(response(task()))
+      if (method === 'POST' && url.pathname.endsWith('/workitems/$Task')) {
+        taskRevision = 1
+        return Promise.resolve(response(task()))
+      }
+      if (method === 'PATCH' && url.pathname.endsWith('/workitems/46275')) {
+        if (typeof init?.body !== 'string') throw new Error('Corpo JSON ausente.')
+        const patch = JSON.parse(init.body) as Array<{ path: string; value?: unknown }>
+        for (const operation of patch) {
+          if (operation.path === '/fields/System.Title') taskTitle = String(operation.value)
+          if (operation.path === '/fields/Microsoft.VSTS.Common.Activity') taskActivity = String(operation.value)
+          if (operation.path === '/fields/Microsoft.VSTS.Scheduling.RemainingWork') taskRemainingWork = Number(operation.value)
+        }
+        taskRevision += 1
+        return Promise.resolve(response(task()))
+      }
+      if (method === 'DELETE' && url.pathname.endsWith('/workitems/46275')) return Promise.resolve(response({ id: 46275, recycled: true }))
+      throw new Error(`Requisição inesperada: ${method} ${url.href}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const server = await createServer({
+      config: {
+        requestTimeoutMs: 1_000,
+        confirmationTtlMs: 60_000,
+        requireConfirmation: true,
+        configurationIssues: {},
+        tfs: { organizationUrl: 'https://tfs.example', project: 'Sarah', pat: 'secret', apiVersion: '7.0', policyPath: resolve('config/tfs-sarah.yaml') },
+      },
+      logger,
+    })
+    const client = new Client({ name: 'test-client', version: '1.0.0' })
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await server.connect(serverTransport)
+    await client.connect(clientTransport)
+    try {
+      const create = await client.callTool({
+        name: 'tfs_prepare_create_work_item',
+        arguments: {
+          type: 'Task',
+          title: taskTitle,
+          fields: { parentId: 46274, customFields: { activity: 'Development', remainingWork: 5, blocked: false } },
+        },
+      })
+      const createPlan = create.structuredContent as { operationId: string; confirmationToken: string }
+      const created = await client.callTool({ name: 'operations_apply', arguments: { ...createPlan, confirmation: 'CONFIRMO' } })
+      expect(created.isError).not.toBe(true)
+      expect(created.structuredContent).toMatchObject({ state: 'applied', result: { workItem: { type: 'Task', parentId: 46274, customFields: { activity: 'Development', remainingWork: 5, blocked: false } } } })
+
+      const update = await client.callTool({
+        name: 'tfs_prepare_update_work_item',
+        arguments: { id: 46275, fields: { title: 'Testes - Resumo do PBI', customFields: { activity: 'Testing', remainingWork: 2 } } },
+      })
+      const updatePlan = update.structuredContent as { operationId: string; confirmationToken: string }
+      const updated = await client.callTool({ name: 'operations_apply', arguments: { ...updatePlan, confirmation: 'CONFIRMO' } })
+      expect(updated.isError).not.toBe(true)
+      expect(updated.structuredContent).toMatchObject({ state: 'applied', result: { workItem: { title: 'Testes - Resumo do PBI', customFields: { activity: 'Testing', remainingWork: 2 } } } })
+
+      const trash = await client.callTool({ name: 'tfs_prepare_trash_work_item', arguments: { id: 46275 } })
+      const trashPlan = trash.structuredContent as { operationId: string; confirmationToken: string }
+      const deleted = await client.callTool({ name: 'operations_apply', arguments: { ...trashPlan, confirmation: 'CONFIRMO' } })
+      expect(deleted.isError).not.toBe(true)
+      expect(deleted.structuredContent).toMatchObject({ state: 'applied', result: { deletion: { id: 46275, recycled: true } } })
+      expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1)
+      expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH')).toHaveLength(1)
+      expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'DELETE')).toHaveLength(1)
+    } finally {
+      await client.close()
+      await server.close()
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('retorna Acceptance Criteria e campos de PBI na leitura e nos snapshots', async () => {
+    const fetchMock = vi.fn<typeof fetch>()
+    const pbi = {
+      id: 46274,
+      rev: 3,
+      url: 'https://tfs.example/workItems/46274',
+      fields: {
+        'System.WorkItemType': 'Product Backlog Item',
+        'System.Title': 'Fluxo de agendamento',
+        'System.State': 'Committed',
+        'System.Description': '<p>Descrição do PBI.</p>',
+        'Microsoft.VSTS.Common.AcceptanceCriteria': '<p>Critérios consultáveis.</p>',
+        'Microsoft.VSTS.Common.Priority': 2,
+        'Microsoft.VSTS.Scheduling.Effort': 20,
+        'Sarah.Tamanho': '3 - Máximo',
+        'Sarah.Complexidade': '3 - Alta',
+        'Sarah.Incerteza': '3 - Alta',
+        'Sarah.ImpactoEstrategico': '3 - Alto',
+        'Sarah.Tangibilidade': '3 - Alta',
+        'Sarah.Urgencia': '3 - Alta',
+      },
+      relations: [],
+    }
+    fetchMock.mockImplementation((input, init) => {
+      const url = requestUrl(input)
+      const method = init?.method ?? 'GET'
+      if (method === 'POST') return Promise.resolve(response({ workItems: [{ id: 46274 }] }))
+      if (url.includes('/workitems?ids=')) return Promise.resolve(response({ value: [pbi] }))
+      if (url.includes('/workitems/46274')) return Promise.resolve(response(pbi))
+      throw new Error(`Requisição inesperada: ${method} ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const server = await createServer({
+      config: {
+        requestTimeoutMs: 1_000,
+        confirmationTtlMs: 60_000,
+        requireConfirmation: true,
+        configurationIssues: {},
+        tfs: { organizationUrl: 'https://tfs.example', project: 'Sarah', pat: 'secret', apiVersion: '7.0', policyPath: resolve('config/tfs-sarah.yaml') },
+      },
+      logger,
+    })
+    const client = new Client({ name: 'test-client', version: '1.0.0' })
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await server.connect(serverTransport)
+    await client.connect(clientTransport)
+    try {
+      const detail = await client.callTool({ name: 'tfs_get_work_item', arguments: { id: 46274 } })
+      expect(detail.structuredContent).toMatchObject({
+        workItem: {
+          acceptanceCriteria: '<p>Critérios consultáveis.</p>',
+          customFields: { priority: 2, effort: 20, size: '3 - Máximo', complexity: '3 - Alta', uncertainty: '3 - Alta', strategicImpact: '3 - Alto', tangibility: '3 - Alta', urgency: '3 - Alta' },
+        },
+      })
+
+      const search = await client.callTool({ name: 'tfs_search_work_items', arguments: { types: ['Product Backlog Item'] } })
+      expect(search.structuredContent).toMatchObject({
+        workItems: [{
+          acceptanceCriteria: '<p>Critérios consultáveis.</p>',
+          customFields: { priority: 2, effort: 20, size: '3 - Máximo', complexity: '3 - Alta', uncertainty: '3 - Alta', strategicImpact: '3 - Alto', tangibility: '3 - Alta', urgency: '3 - Alta' },
+        }],
+      })
+    } finally {
+      await client.close()
+      await server.close()
+      vi.unstubAllGlobals()
     }
   })
 

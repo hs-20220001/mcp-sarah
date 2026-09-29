@@ -198,7 +198,9 @@ export class TfsClient {
       .map(relation => relationId(relation.url))
       .filter((id): id is number => id !== null)
     const customFields = Object.fromEntries(
-      Object.entries(this.policy.customFields).map(([alias, definition]) => [alias, item.fields[definition.referenceName] ?? null]),
+      Object.entries(this.policy.customFields)
+        .filter(([, definition]) => !definition.allowedWorkItemTypes || definition.allowedWorkItemTypes.includes(type))
+        .map(([alias, definition]) => [alias, item.fields[definition.referenceName] ?? null]),
     )
     const tags = fieldText(item.fields, 'System.Tags').split(';').map(tag => tag.trim()).filter(Boolean)
     return {
@@ -207,6 +209,7 @@ export class TfsClient {
       type,
       title: fieldText(item.fields, 'System.Title'),
       description: fieldText(item.fields, descriptionField(this.policy, type)),
+      acceptanceCriteria: fieldText(item.fields, 'Microsoft.VSTS.Common.AcceptanceCriteria'),
       state: fieldText(item.fields, 'System.State'),
       assignedTo: assignedTo(item.fields['System.AssignedTo']),
       areaPath: fieldText(item.fields, 'System.AreaPath') || null,
@@ -274,13 +277,14 @@ export class TfsClient {
     }
     if (input.title !== undefined) setField('System.Title', input.title)
     if (input.description !== undefined) setField(descriptionField(this.policy, type), input.description)
+    if (input.acceptanceCriteria !== undefined) setField('Microsoft.VSTS.Common.AcceptanceCriteria', input.acceptanceCriteria)
     if (input.state !== undefined) setField('System.State', input.state)
     if (input.assignedTo !== undefined) setField('System.AssignedTo', input.assignedTo)
     if (input.areaPath !== undefined) setField('System.AreaPath', input.areaPath)
     if (input.iterationPath !== undefined) setField('System.IterationPath', input.iterationPath)
     if (input.tags !== undefined) setField('System.Tags', input.tags === null ? null : input.tags.join('; '))
     if (input.customFields) {
-      for (const [referenceName, value] of Object.entries(resolveCustomFields(this.policy, input.customFields))) setField(referenceName, value)
+      for (const [referenceName, value] of Object.entries(resolveCustomFields(this.policy, input.customFields, type))) setField(referenceName, value)
     }
     return operations
   }

@@ -50,6 +50,7 @@ export interface TfsWorkItem {
   type: string
   title: string
   description: string
+  acceptanceCriteria: string
   state: string
   assignedTo: string | null
   areaPath: string | null
@@ -65,6 +66,7 @@ export interface TfsWorkItem {
 export interface WorkItemFieldsInput {
   title?: string | undefined
   description?: string | null | undefined
+  acceptanceCriteria?: string | null | undefined
   state?: string | null | undefined
   assignedTo?: string | null | undefined
   areaPath?: string | null | undefined

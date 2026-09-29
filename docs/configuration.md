@@ -41,6 +41,6 @@ Todas as integrações desenvolvidas são registradas automaticamente. Uma integ
 
 ## Políticas
 
-O perfil TFS autoriza tipos e hierarquia, mapeia o campo de descrição e converte aliases amigáveis de `customFields` para reference names.
+O perfil TFS autoriza tipos e hierarquia, mapeia o campo de descrição e converte aliases amigáveis de `customFields` para reference names. O perfil Sarah inclui `priority`, `effort`, `businessValue` e os seis aliases Planning (`size`, `complexity`, `uncertainty`, `strategicImpact`, `tangibility`, `urgency`); opções declaradas na política são validadas antes de preparar a escrita. Acceptance Criteria usa o campo padrão `Microsoft.VSTS.Common.AcceptanceCriteria`. Para Tasks, `activity` enumera as sete opções exibidas pelo projeto, `remainingWork` aceita número e `blocked` aceita boolean; esses aliases só podem ser escritos em `Task`. A disponibilidade efetiva depende do processo TFS remoto.
 
 A política WordPress autoriza árvores de páginas, categorias de posts, status, MIME types e tamanho máximo. `allowedPageRootIds: []` e `allowedPostCategoryIds: []` permitem todo o conteúdo correspondente; ao adicionar IDs, a lista passa a restringir o escopo. Ela não contém credenciais.

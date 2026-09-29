@@ -12,5 +12,9 @@
 - Planos ficam apenas em memória e expiram por padrão em 15 minutos.
 - Documentação e mensagens públicas usam português do Brasil; implementação usa inglês.
 - Comentários de work items TFS usam a API `7.0-preview.3`, separada da versão geral configurada para Work Items.
+- O módulo TFS expõe `Acceptance Criteria` como `acceptanceCriteria` e inclui esse campo e `customFields` autorizados nos resultados paginados; descrição integral segue disponível no detalhe do item.
+- O perfil TFS Sarah mapeia `priority`, `effort`, `businessValue` e os seis campos Planning configurados; valores enumerados localmente aceitam códigos ou rótulos definidos.
+- A orientação de Tasks para PBI sugere quatro filhas por padrão (Desenvolvimento, Documentação, Comunicação e Testes), com prefixo de título em pt-BR, `parentId` do PBI e Activity MCP em inglês.
+- O perfil TFS Sarah expõe `activity`, `remainingWork` e `blocked` apenas para Tasks; Activity valida as sete opções visíveis na interface.
 - `MCP_REQUIRE_CONFIRMATION` é `true` por padrão; `false` remove somente o campo literal `CONFIRMO` de `operations_apply`.
 - WordPress aceita os perfis `user` e `developer` com a mesma credencial; `WP_BASE_URL` legado representa `user`, e dois perfis exigem `wiki` explícito nas ferramentas quando ambos estão configurados.

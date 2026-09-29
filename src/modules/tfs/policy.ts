@@ -6,6 +6,8 @@ import { AppError } from '../../core/errors.js'
 const customFieldSchema = z.object({
   referenceName: z.string().min(1),
   values: z.record(z.string(), z.string()).optional(),
+  allowedWorkItemTypes: z.array(z.string().min(1)).optional(),
+  valueType: z.enum(['string', 'number', 'boolean']).optional(),
 })
 
 const tfsPolicySchema = z.object({
@@ -42,12 +44,21 @@ export function assertParentType(policy: TfsPolicy, childType: string, parentTyp
   }
 }
 
-export function resolveCustomFields(policy: TfsPolicy, values: Record<string, string | number | boolean | null>): Record<string, unknown> {
+export function resolveCustomFields(policy: TfsPolicy, values: Record<string, string | number | boolean | null>, workItemType?: string): Record<string, unknown> {
   const resolved: Record<string, unknown> = {}
   for (const [alias, value] of Object.entries(values)) {
     const field = policy.customFields[alias]
     if (!field) throw new AppError('POLICY_DENIED', `O campo customizado '${alias}' não está permitido no perfil.`)
+    if (field.allowedWorkItemTypes && (!workItemType || !field.allowedWorkItemTypes.includes(workItemType))) {
+      throw new AppError('POLICY_DENIED', `O campo '${alias}' só está permitido para: ${field.allowedWorkItemTypes.join(', ')}.`)
+    }
+    if (value !== null && field.valueType && typeof value !== field.valueType) {
+      throw new AppError('POLICY_DENIED', `O campo '${alias}' deve receber um valor do tipo ${field.valueType}.`)
+    }
     const mapped = value === null ? null : field.values?.[String(value)] ?? value
+    if (field.values && value !== null && mapped === value && !Object.values(field.values).includes(String(value))) {
+      throw new AppError('POLICY_DENIED', `O valor '${String(value)}' não é permitido para o campo '${alias}'. Valores aceitos: ${Object.values(field.values).join(', ')}.`)
+    }
     resolved[field.referenceName] = mapped
   }
   return resolved

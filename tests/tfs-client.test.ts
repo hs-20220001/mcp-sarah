@@ -45,6 +45,96 @@ describe('TfsClient', () => {
     expect(new Headers(init.headers).get('authorization')).toMatch(/^Basic /)
   })
 
+  it('cria uma Task ligada ao PBI com Activity, Remaining Work e Blocked', async () => {
+    const policy = await loadTfsPolicy(resolve('config/tfs-sarah.yaml'))
+    fetchMock.mockResolvedValue(response({
+      id: 11,
+      rev: 1,
+      url: 'api',
+      fields: {
+        'System.WorkItemType': 'Task',
+        'System.Title': 'Testes - Campo Implante obrigatório',
+        'System.State': 'To Do',
+        'Microsoft.VSTS.Common.Activity': 'Testing',
+        'Microsoft.VSTS.Scheduling.RemainingWork': 6,
+        'Microsoft.VSTS.CMMI.Blocked': false,
+        'System.Description': 'Validar o campo Implante.',
+      },
+      relations: [{ rel: 'System.LinkTypes.Hierarchy-Reverse', url: 'https://tfs.example/tfs/DefaultCollection/Sarah/_apis/wit/workItems/10' }],
+    }))
+    const client = new TfsClient(
+      { organizationUrl: 'https://tfs.example/tfs/DefaultCollection', project: 'Sarah', pat: 'secret', apiVersion: '7.0', policyPath: '' },
+      policy,
+      new HttpClient({ timeoutMs: 1_000, fetchImpl: fetchMock }),
+    )
+
+    const result = await client.create({
+      type: 'Task',
+      title: 'Testes - Campo Implante obrigatório',
+      description: 'Validar o campo Implante.',
+      parentId: 10,
+      customFields: { activity: 'Testing', remainingWork: 6, blocked: false },
+    })
+
+    expect(result).toMatchObject({
+      parentId: 10,
+      customFields: { activity: 'Testing', remainingWork: 6, blocked: false },
+    })
+    const [, init] = firstRequest()
+    if (typeof init?.body !== 'string') throw new Error('Corpo JSON ausente.')
+    const patch = JSON.parse(init.body) as Array<{ path: string; value: unknown }>
+    expect(patch).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: '/fields/Microsoft.VSTS.Common.Activity', value: 'Testing' }),
+      expect.objectContaining({ path: '/fields/Microsoft.VSTS.Scheduling.RemainingWork', value: 6 }),
+      expect.objectContaining({ path: '/fields/Microsoft.VSTS.CMMI.Blocked', value: false }),
+    ]))
+    expect(patch.find(operation => operation.path === '/relations/-')?.value).toMatchObject({ rel: 'System.LinkTypes.Hierarchy-Reverse' })
+  })
+
+  it('grava descrição, Acceptance Criteria e prioridade de um PBI', async () => {
+    const policy = await loadTfsPolicy(resolve('config/tfs-sarah.yaml'))
+    fetchMock.mockResolvedValue(response({
+      id: 10,
+      rev: 1,
+      url: 'api',
+      fields: {
+        'System.WorkItemType': 'Product Backlog Item',
+        'System.Title': 'Agendamento',
+        'System.Description': '<p><em>"Como usuário, quero agendar."</em></p><p>Detalhes.</p>',
+        'Microsoft.VSTS.Common.AcceptanceCriteria': '<p>Critério de aceite.</p>',
+        'Microsoft.VSTS.Common.Priority': 2,
+        'System.State': 'New',
+      },
+    }))
+    const client = new TfsClient(
+      { organizationUrl: 'https://tfs.example/tfs/DefaultCollection', project: 'Sarah', pat: 'secret', apiVersion: '7.0', policyPath: '' },
+      policy,
+      new HttpClient({ timeoutMs: 1_000, fetchImpl: fetchMock }),
+    )
+
+    const result = await client.create({
+      type: 'Product Backlog Item',
+      title: 'Agendamento',
+      description: '<p><em>"Como usuário, quero agendar."</em></p><p>Detalhes.</p>',
+      acceptanceCriteria: '<p>Critério de aceite.</p>',
+      customFields: { priority: 2 },
+    })
+
+    expect(result).toMatchObject({
+      description: '<p><em>"Como usuário, quero agendar."</em></p><p>Detalhes.</p>',
+      acceptanceCriteria: '<p>Critério de aceite.</p>',
+      customFields: { priority: 2 },
+    })
+    const [, init] = firstRequest()
+    if (typeof init?.body !== 'string') throw new Error('Corpo JSON ausente.')
+    const patch = JSON.parse(init.body) as Array<{ path: string; value: unknown }>
+    expect(patch).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: '/fields/System.Description', value: '<p><em>"Como usuário, quero agendar."</em></p><p>Detalhes.</p>' }),
+      expect.objectContaining({ path: '/fields/Microsoft.VSTS.Common.AcceptanceCriteria', value: '<p>Critério de aceite.</p>' }),
+      expect.objectContaining({ path: '/fields/Microsoft.VSTS.Common.Priority', value: 2 }),
+    ]))
+  })
+
   it('envia work item apenas para a lixeira', async () => {
     const policy = await loadTfsPolicy(resolve('config/tfs-sarah.yaml'))
     fetchMock.mockResolvedValue(response({ id: 10 }))
@@ -76,6 +166,81 @@ describe('TfsClient', () => {
     const operations = JSON.parse(init.body) as Array<{ op: string; path: string; value?: unknown }>
     expect(operations[0]).toEqual({ op: 'test', path: '/rev', value: 3 })
     expect(init.method).toBe('PATCH')
+  })
+
+  it('edita campos de Task com Activity e tipos corretos no JSON Patch', async () => {
+    const policy = await loadTfsPolicy(resolve('config/tfs-sarah.yaml'))
+    fetchMock.mockResolvedValue(response({
+      id: 11,
+      rev: 3,
+      url: 'api',
+      fields: {
+        'System.WorkItemType': 'Task',
+        'System.Title': 'Documentação - Campo Implante obrigatório',
+        'System.State': 'To Do',
+        'Microsoft.VSTS.Common.Activity': 'Documentation',
+        'Microsoft.VSTS.Scheduling.RemainingWork': 2,
+        'Microsoft.VSTS.CMMI.Blocked': true,
+      },
+      relations: [],
+    }))
+    const client = new TfsClient(
+      { organizationUrl: 'https://tfs.example/tfs/DefaultCollection', project: 'Sarah', pat: 'secret', apiVersion: '7.0', policyPath: '' },
+      policy,
+      new HttpClient({ timeoutMs: 1_000, fetchImpl: fetchMock }),
+    )
+
+    await client.update(11, 'Task', 2, {
+      title: 'Documentação - Campo Implante obrigatório',
+      customFields: { activity: 'Documentation', remainingWork: 2, blocked: true },
+    }, [])
+    const [, init] = firstRequest()
+    if (typeof init?.body !== 'string') throw new Error('Corpo JSON ausente.')
+    const operations = JSON.parse(init.body) as Array<{ op: string; path: string; value?: unknown }>
+    expect(operations).toEqual(expect.arrayContaining([
+      { op: 'test', path: '/rev', value: 2 },
+      { op: 'add', path: '/fields/System.Title', value: 'Documentação - Campo Implante obrigatório' },
+      { op: 'add', path: '/fields/Microsoft.VSTS.Common.Activity', value: 'Documentation' },
+      { op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.RemainingWork', value: 2 },
+      { op: 'add', path: '/fields/Microsoft.VSTS.CMMI.Blocked', value: true },
+    ]))
+  })
+
+  it('edita Acceptance Criteria e campos Planning com teste de revisão', async () => {
+    const policy = await loadTfsPolicy(resolve('config/tfs-sarah.yaml'))
+    fetchMock.mockResolvedValue(response({
+      id: 10,
+      rev: 5,
+      url: 'api',
+      fields: {
+        'System.WorkItemType': 'Product Backlog Item',
+        'System.Title': 'Atualizado',
+        'System.Description': '<p>Descrição.</p>',
+        'Microsoft.VSTS.Common.AcceptanceCriteria': '<p>Novos critérios.</p>',
+        'Sarah.Tamanho': '3 - Máximo',
+        'Microsoft.VSTS.Scheduling.Effort': 20,
+        'System.State': 'New',
+      },
+    }))
+    const client = new TfsClient(
+      { organizationUrl: 'https://tfs.example/tfs/DefaultCollection', project: 'Sarah', pat: 'secret', apiVersion: '7.0', policyPath: '' },
+      policy,
+      new HttpClient({ timeoutMs: 1_000, fetchImpl: fetchMock }),
+    )
+
+    await client.update(10, 'Product Backlog Item', 4, {
+      acceptanceCriteria: '<p>Novos critérios.</p>',
+      customFields: { size: 3, effort: 20 },
+    }, [])
+    const [, init] = firstRequest()
+    if (typeof init?.body !== 'string') throw new Error('Corpo JSON ausente.')
+    const operations = JSON.parse(init.body) as Array<{ op: string; path: string; value?: unknown }>
+    expect(operations).toEqual(expect.arrayContaining([
+      { op: 'test', path: '/rev', value: 4 },
+      { op: 'add', path: '/fields/Microsoft.VSTS.Common.AcceptanceCriteria', value: '<p>Novos critérios.</p>' },
+      { op: 'add', path: '/fields/Sarah.Tamanho', value: '3 - Máximo' },
+      { op: 'add', path: '/fields/Microsoft.VSTS.Scheduling.Effort', value: 20 },
+    ]))
   })
 
   it('lista comentários com paginação e a versão preview da API', async () => {

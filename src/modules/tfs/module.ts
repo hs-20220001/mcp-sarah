@@ -13,16 +13,20 @@ import type { TfsComment, TfsWorkItem, WorkItemFieldsInput } from './types.js'
 const pageSize = z.number().int().min(1).max(50).default(25)
 const commentText = z.string().min(1).max(100_000).refine(value => value.trim().length > 0, 'O comentário não pode ser vazio.')
 const customValue = z.union([z.string(), z.number(), z.boolean(), z.null()])
+const pbiDescriptionGuidance = 'Para Product Backlog Item (PBI), se o usuário não pedir explicitamente outro formato e houver contexto suficiente, comece a descrição em HTML com <p><em>"Como [persona], quero [objetivo], para [benefício]."</em></p> e, em seguida, acrescente os detalhes do PBI em outros parágrafos. Não invente informações nem altere um formato explicitamente solicitado.'
+const taskGuidance = 'Para Tasks de um PBI, se o usuário não especificar quantidade ou categorias, proponha quatro Tasks: Desenvolvimento, Documentação, Comunicação e Testes. Use type="Task", parentId com o ID do PBI e títulos no padrão "<Categoria> - <resumo curto do título do PBI>". Configure customFields.activity, respectivamente, como Development, Documentation, Communication e Testing. Prepare uma operação separada por Task e siga o fluxo de diff e confirmação antes de aplicar.'
+const taskFieldsGuidance = 'Para Tasks, customFields.activity aceita Communication, Deployment, Design, Development, Documentation, Requirements ou Testing; remainingWork recebe número e blocked recebe boolean. Esses três aliases são exclusivos de Task.'
 const mutableFieldsSchema = z.object({
   title: z.string().trim().min(1).max(512).optional(),
-  description: z.string().max(100_000).nullable().optional(),
+  description: z.string().max(100_000).nullable().optional().describe(pbiDescriptionGuidance),
+  acceptanceCriteria: z.string().max(100_000).nullable().optional().describe('Critérios de aceite do work item. No PBI, corresponde ao campo Acceptance Criteria do TFS.'),
   state: z.string().trim().min(1).max(128).nullable().optional(),
   assignedTo: z.string().trim().min(1).max(256).nullable().optional(),
   areaPath: z.string().trim().min(1).max(512).nullable().optional(),
   iterationPath: z.string().trim().min(1).max(512).nullable().optional(),
   tags: z.array(z.string().trim().min(1).max(128)).max(50).nullable().optional(),
   parentId: z.number().int().positive().nullable().optional(),
-  customFields: z.record(z.string(), customValue).optional(),
+  customFields: z.record(z.string(), customValue).optional().describe(taskFieldsGuidance),
 })
 
 function compact(item: TfsWorkItem): Record<string, unknown> {
@@ -31,12 +35,14 @@ function compact(item: TfsWorkItem): Record<string, unknown> {
     rev: item.rev,
     type: item.type,
     title: item.title,
+    acceptanceCriteria: item.acceptanceCriteria,
     state: item.state,
     assignedTo: item.assignedTo,
     areaPath: item.areaPath,
     iterationPath: item.iterationPath,
     tags: item.tags,
     parentId: item.parentId,
+    customFields: item.customFields,
     changedDate: item.changedDate,
     url: item.webUrl,
   }
@@ -270,7 +276,7 @@ export class TfsModule implements IntegrationModule {
 
     server.registerTool('tfs_prepare_create_work_item', {
       title: 'Preparar criação de work item',
-      description: 'Valida e prepara a criação de um work item. Não escreve no TFS; devolve diff e token curto.',
+      description: `Valida e prepara a criação de um work item. Não escreve no TFS; devolve diff e token curto. ${pbiDescriptionGuidance} ${taskGuidance}`,
       inputSchema: z.object({ type: z.string().trim().min(1), title: z.string().trim().min(1).max(512), fields: mutableFieldsSchema.omit({ title: true }).default({}) }),
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     }, args => safeToolCall(async () => {
@@ -278,7 +284,7 @@ export class TfsModule implements IntegrationModule {
       const policy = this.#requirePolicy()
       const input = { type: args.type, title: args.title, ...args.fields }
       assertWorkItemType(policy, input.type)
-      resolveCustomFields(policy, input.customFields ?? {})
+      resolveCustomFields(policy, input.customFields ?? {}, input.type)
       if (input.parentId) assertParentType(policy, input.type, (await client.getWorkItem(input.parentId)).type)
       const plan = await this.context.operations.prepare({
         module: 'tfs', action: 'create_work_item', target: `new:${args.type}`, summary: `Criar ${args.type}: ${args.title}`,
@@ -291,17 +297,17 @@ export class TfsModule implements IntegrationModule {
 
     server.registerTool('tfs_prepare_update_work_item', {
       title: 'Preparar edição de work item',
-      description: 'Lê a revisão atual e prepara uma edição protegida por verificação otimista.',
+      description: `Lê a revisão atual e prepara uma edição protegida por verificação otimista. ${pbiDescriptionGuidance} ${taskGuidance} ${taskFieldsGuidance}`,
       inputSchema: z.object({ id: z.number().int().positive(), fields: mutableFieldsSchema.refine(value => Object.values(value).some(entry => entry !== undefined), 'Informe ao menos um campo.') }),
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     }, args => safeToolCall(async () => {
       const client = this.#requireClient()
       const policy = this.#requirePolicy()
-      resolveCustomFields(policy, args.fields.customFields ?? {})
       const raw = await client.getRawWorkItem(args.id)
       const current = client.normalize(raw)
       const fields: WorkItemFieldsInput = args.fields
       assertWorkItemType(policy, current.type)
+      resolveCustomFields(policy, fields.customFields ?? {}, current.type)
       if (fields.parentId) assertParentType(policy, current.type, (await client.getWorkItem(fields.parentId)).type)
       const plan = await this.context.operations.prepare({
         module: 'tfs', action: 'update_work_item', target: String(args.id), summary: `Editar work item ${args.id}: ${current.title}`,
@@ -318,7 +324,7 @@ export class TfsModule implements IntegrationModule {
 
     server.registerTool('tfs_prepare_trash_work_item', {
       title: 'Preparar envio de work item à lixeira',
-      description: 'Prepara remoção recuperável. Nunca solicita destruição permanente.',
+      description: 'Prepara remoção recuperável de work items, inclusive Tasks. Nunca solicita destruição permanente.',
       inputSchema: z.object({ id: z.number().int().positive() }),
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: false },
     }, args => safeToolCall(async () => {

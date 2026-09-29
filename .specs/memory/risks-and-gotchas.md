@@ -3,6 +3,8 @@
 - Não registrar objetos de erro HTTP sem redação; eles podem conter cabeçalhos e corpos sensíveis.
 - O PAT TFS e a Application Password WordPress devem existir somente no ambiente local.
 - IDs e nomes de campos customizados variam entre processos TFS; somente aliases permitidos podem ser escritos.
+- A política local não confirma disponibilidade, permissões ou allowed values remotos de campos TFS; `Personas affected` e `Mapped on SpecMap` continuam sem aliases porque seus reference names não foram verificados.
+- Um conjunto de quatro Tasks é preparado como quatro operações independentes, sem atomicidade do lote; `Personas affected` em Task também segue sem alias até confirmação do reference name remoto.
 - Área, iteração, estado, raiz de página e categoria devem vir da API ou de política explícita.
 - Com allowlists WordPress vazias, a credencial pode alcançar todo conteúdo permitido pela API e uploads podem ler qualquer imagem/PDF acessível ao processo.
 - Mídias precisam ser novamente verificadas por tipo real, tamanho e hash, mesmo quando o caminho local está irrestrito.

@@ -1,9 +1,9 @@
 ---
-change: changes/wordpress-multiple-wikis.md
+change: changes/tfs-pbi-tasks.md
 status: concluded
-updated: 2026-09-24
+updated: 2026-09-29
 ---
 
 # Mudança ativa
 
-Seleção explícita entre wiki pública dos usuários e wiki da informática no módulo WordPress implementada e validada.
+Orientação, campos e operações de Tasks relacionadas a Product Backlog Items do TFS.

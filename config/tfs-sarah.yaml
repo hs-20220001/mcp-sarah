@@ -21,6 +21,31 @@ allowedParentTypes:
     - Feature
     - Product Backlog Item
 customFields:
+  priority:
+    referenceName: Microsoft.VSTS.Common.Priority
+    valueType: number
+  activity:
+    referenceName: Microsoft.VSTS.Common.Activity
+    allowedWorkItemTypes:
+      - Task
+    values:
+      Communication: Communication
+      Deployment: Deployment
+      Design: Design
+      Development: Development
+      Documentation: Documentation
+      Requirements: Requirements
+      Testing: Testing
+  remainingWork:
+    referenceName: Microsoft.VSTS.Scheduling.RemainingWork
+    allowedWorkItemTypes:
+      - Task
+    valueType: number
+  blocked:
+    referenceName: Microsoft.VSTS.CMMI.Blocked
+    allowedWorkItemTypes:
+      - Task
+    valueType: boolean
   size:
     referenceName: Sarah.Tamanho
     values:
