@@ -2,6 +2,8 @@
 allowedPageRootIds: []
 # Lista vazia permite posts de todas as categorias. Informe IDs para restringir.
 allowedPostCategoryIds: []
+# Lista vazia permite todos os menus; configure IDs para limitar escritas.
+allowedMenuIds: []
 allowedStatuses:
   - draft
   - pending

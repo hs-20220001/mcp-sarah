@@ -28,7 +28,12 @@
 - Todas as ferramentas WordPress aceitam `wiki=user` (wiki pública dos usuários) ou `wiki=developer` (wiki da informática) quando os dois perfis estão configurados. Sem a escolha, a ferramenta retorna `AMBIGUOUS_REQUEST` e não acessa o serviço.
 - `wordpress_search_content` e `wordpress_get_content`: páginas/posts.
 - `wordpress_search_media` e `wordpress_get_media`: anexos.
+- `wordpress_list_menus`: descobre menus reais da wiki, sem baixar todos os itens.
+- `wordpress_list_menu_items`: lista itens e hierarquia de um menu real com paginação.
+- `wordpress_suggest_menu_placement`: consulta o menu candidato e sugere item pai somente se for inequívoco; caso contrário, pede menu e posição ao usuário.
 - `wordpress_prepare_create_content`: prepara página/post, com `draft` padrão.
+- `wordpress_prepare_create_menu_item`: prepara inclusão de página publicada em menu existente, depois de confirmar o menu e o item pai; plano independente do plano de criação da página.
+- `wordpress_prepare_update_menu_item`: prepara mudança de pai, ordem ou rótulo de item de página no mesmo menu.
 - `wordpress_prepare_update_content`: prepara edição parcial.
 - `wordpress_prepare_trash_content`: prepara lixeira.
 - `wordpress_prepare_upload_media`: valida arquivo, associação e hash.

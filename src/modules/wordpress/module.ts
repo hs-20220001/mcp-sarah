@@ -10,7 +10,7 @@ import { operationPreparationMessage } from '../../core/operations.js'
 import { safeToolCall, successResult } from '../../core/tool-result.js'
 import { WordPressClient } from './client.js'
 import { assertStatus, inspectMediaPath, loadWordPressPolicy, type WordPressPolicy } from './policy.js'
-import type { ContentFieldsInput, ContentKind, MediaFieldsInput, WordPressContent, WordPressMedia, WordPressTextField } from './types.js'
+import type { ContentFieldsInput, ContentKind, MediaFieldsInput, MenuItemFieldsInput, WordPressContent, WordPressMedia, WordPressMenuItem, WordPressTextField } from './types.js'
 
 const contentKind = z.enum(['page', 'post'])
 const wikiKind = z.enum(wordPressWikis)
@@ -36,6 +36,27 @@ const mediaFieldsSchema = z.object({
   description: z.string().max(100_000).optional(),
   postId: z.number().int().positive().optional(),
 })
+const menuItemFieldsSchema = z.object({
+  parentItemId: z.number().int().nonnegative().optional(),
+  menuOrder: z.number().int().nonnegative().optional(),
+  title: z.string().trim().min(1).max(512).optional(),
+})
+
+function menuItemTitle(item: WordPressMenuItem): string {
+  return typeof item.title === 'string' ? item.title : raw(item.title)
+}
+
+function normalizeMenuItem(item: WordPressMenuItem): Record<string, unknown> {
+  return { id: item.id, title: menuItemTitle(item), pageId: item.type === 'post_type' && item.object === 'page' ? item.object_id : null, type: item.type, object: item.object, parentItemId: item.parent, menuOrder: item.menu_order, menuId: item.menus, status: item.status, url: item.url }
+}
+
+function menuFingerprint(items: WordPressMenuItem[]): string {
+  return createHash('sha256').update(JSON.stringify(items.map(item => [item.id, item.menus, item.parent, item.menu_order, item.type, item.object, item.object_id, menuItemTitle(item), item.url, item.status]).sort((a, b) => Number(a[0]) - Number(b[0])))).digest('hex')
+}
+
+function normalizedName(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('pt-BR')
+}
 
 function raw(field: WordPressTextField | undefined): string {
   return field?.raw ?? field?.rendered ?? ''
@@ -137,6 +158,115 @@ export class WordPressModule implements IntegrationModule {
   }
 
   registerTools(server: McpServer): void {
+    server.registerTool('wordpress_list_menus', {
+      title: 'Listar menus WordPress',
+      description: 'Descobre menus reais da wiki escolhida, sem buscar todos os seus itens. Para encontrar posição hierárquica, consulte os itens do menu candidato ou use a sugestão.',
+      inputSchema: z.object({ wiki: wikiKind.optional(), page: z.number().int().min(1).default(1), perPage: z.number().int().min(1).max(50).default(50) }),
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    }, args => safeToolCall(async () => {
+      const wiki = this.#resolveWiki(args.wiki)
+      const menus = await this.#requireClient(wiki).listMenus(args.page, args.perPage)
+      return successResult(`${menus.length} menu(s) na ${wikiLabels[wiki]}.`, { wiki, menus: menus.map(menu => ({ id: menu.id, name: menu.name, slug: menu.slug, locations: menu.locations ?? [] })), page: args.page, hasMore: menus.length === args.perPage })
+    }))
+
+    server.registerTool('wordpress_list_menu_items', {
+      title: 'Listar itens de menu WordPress',
+      description: 'Lê itens reais paginados de um menu, incluindo hierarquia parentItemId e ordem; menuId deve vir da listagem da wiki selecionada.',
+      inputSchema: z.object({ wiki: wikiKind.optional(), menuId: z.number().int().positive(), page: z.number().int().min(1).default(1), perPage: z.number().int().min(1).max(50).default(50) }),
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    }, args => safeToolCall(async () => {
+      const wiki = this.#resolveWiki(args.wiki)
+      const client = this.#requireClient(wiki)
+      const menu = await client.getMenu(args.menuId)
+      const items = await client.listMenuItems(args.menuId, args.page, args.perPage)
+      return successResult(`${items.length} item(ns) do menu ${menu.name}.`, { wiki, menu: { id: menu.id, name: menu.name }, items: items.map(normalizeMenuItem), page: args.page, hasMore: items.length === args.perPage })
+    }))
+
+    server.registerTool('wordpress_suggest_menu_placement', {
+      title: 'Sugerir posição em menu WordPress',
+      description: 'Consulta menus reais e itens somente do candidato. Na wiki developer, sistemas costumam ficar em Software e desenvolvimento; na wiki user, procure o menu com nome do sistema. Sem correspondência única ou pai seguro, peça ao usuário menu e posição; nunca insere automaticamente.',
+      inputSchema: z.object({ wiki: wikiKind.optional(), systemName: z.string().trim().min(1).max(200).optional(), pageParentId: z.number().int().positive().optional(), menuId: z.number().int().positive().optional(), isSystem: z.boolean().default(false) }),
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    }, args => safeToolCall(async () => {
+      const wiki = this.#resolveWiki(args.wiki)
+      const client = this.#requireClient(wiki)
+      const menus = (args.menuId ? [await client.getMenu(args.menuId)] : await this.#allMenus(client))
+        .filter(menu => this.#requirePolicy(wiki).allowedMenuIds.length === 0 || this.#requirePolicy(wiki).allowedMenuIds.includes(menu.id))
+      const matches = args.menuId ? menus.filter(menu => menu.id === args.menuId) : wiki === 'developer' && args.isSystem
+        ? menus.filter(menu => normalizedName(menu.name) === 'software e desenvolvimento')
+        : args.systemName ? menus.filter(menu => normalizedName(menu.name) === normalizedName(args.systemName ?? '')) : []
+      const menu = matches.length === 1 ? matches[0] : undefined
+      if (!menu) return successResult('Não há posição única e segura para o menu. Peça ao usuário o menu e o item pai; a página NÃO foi adicionada ao menu.', { wiki, suggested: false, reason: matches.length ? 'Mais de um menu corresponde ao contexto.' : 'Nenhum menu inequívoco corresponde ao contexto informado.', menus: menus.map(entry => ({ id: entry.id, name: entry.name })) })
+      const items = await client.getAllMenuItems(menu.id)
+      if (args.pageParentId) await client.assertContentAllowed('page', await client.getContent('page', args.pageParentId))
+      const parents = args.pageParentId ? items.filter(item => item.type === 'post_type' && item.object === 'page' && item.object_id === args.pageParentId) : []
+      const root = wiki === 'developer' && args.isSystem ? items.filter(item => item.parent === 0 && normalizedName(menuItemTitle(item)) === normalizedName(menu.name)) : []
+      const parentItemId = parents.length === 1 ? parents[0]?.id : args.pageParentId ? undefined : wiki === 'developer' && args.isSystem ? root.length === 1 ? root[0]?.id : undefined : 0
+      if (parentItemId === undefined) return successResult('A posição hierárquica não está clara. Peça ao usuário o item pai; a página NÃO foi adicionada ao menu.', { wiki, suggested: false, reason: args.pageParentId ? 'A página-pai não aparece exatamente uma vez no menu candidato.' : 'O item raiz do menu de sistemas não foi identificado de modo único.', menu: { id: menu.id, name: menu.name } })
+      await this.#assertMenuParent(client, items, parentItemId)
+      const parentItem = items.find(item => item.id === parentItemId)
+      return successResult(`Sugestão para ${menu.name}: confirme o menu e o item pai antes de preparar a inclusão. A página ainda NÃO foi adicionada ao menu.`, { wiki, suggested: true, menu: { id: menu.id, name: menu.name }, parentItemId, parentTitle: parentItem ? menuItemTitle(parentItem) : null, reason: parents.length === 1 ? 'A página-pai já consta neste menu.' : wiki === 'developer' ? 'Menu e item raiz de sistemas identificados na wiki da informática.' : 'Menu do sistema identificado por nome informado.' })
+    }))
+
+    server.registerTool('wordpress_prepare_create_menu_item', {
+      title: 'Preparar inclusão de página em menu',
+      description: 'Após criar/publicar a página e confirmar explicitamente o menu e o item pai sugeridos, prepara UMA escrita para inseri-la no menu real. Sem confirmação da posição, não inclua; reporte que a página ficou fora do menu e peça menu/posição.',
+      inputSchema: z.object({ wiki: wikiKind.optional(), menuId: z.number().int().positive(), pageId: z.number().int().positive(), fields: menuItemFieldsSchema }),
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    }, args => safeToolCall(async () => {
+      const wiki = this.#resolveWiki(args.wiki)
+      const client = this.#requireClient(wiki)
+      const { menu, items, fingerprint } = await this.#menuSnapshot(wiki, args.menuId)
+      const page = await client.getContent('page', args.pageId)
+      await client.assertContentAllowed('page', page)
+      if (page.status !== 'publish') throw new AppError('POLICY_DENIED', 'Publique a página antes de adicioná-la ao menu; página em rascunho permanece fora do menu.')
+      if (items.some(item => item.type === 'post_type' && item.object === 'page' && item.object_id === page.id)) throw new AppError('CONFLICT', 'A página já consta neste menu; consulte os itens para editar sua posição.')
+      await this.#assertMenuParent(client, items, args.fields.parentItemId ?? 0)
+      const fields: MenuItemFieldsInput = { ...args.fields, parentItemId: args.fields.parentItemId ?? 0, menuOrder: args.fields.menuOrder ?? Math.max(0, ...items.map(item => item.menu_order)) + 1 }
+      const plan = await this.context.operations.prepare({
+        module: 'wordpress', action: 'create_menu_item', target: `${wiki}:menu:${menu.id}:page:${page.id}`, summary: `Adicionar página ${page.id} ao menu ${menu.name} da ${wikiLabels[wiki]}`,
+        diff: [{ field: 'menuId', after: menu.id }, { field: 'pageId', after: page.id }, { field: 'parentItemId', after: fields.parentItemId }, { field: 'menuOrder', after: fields.menuOrder }, ...(fields.title ? [{ field: 'title', after: fields.title }] : [])],
+        preflight: async () => {
+          const latest = await this.#menuSnapshot(wiki, menu.id)
+          if (latest.fingerprint !== fingerprint || latest.menu.name !== menu.name) throw new AppError('CONFLICT', 'O menu foi modificado após a preparação; consulte-o novamente.')
+          const currentPage = await client.getContent('page', page.id)
+          await client.assertContentAllowed('page', currentPage)
+          if (currentPage.status !== 'publish' || currentPage.modified_gmt !== page.modified_gmt) throw new AppError('CONFLICT', 'A página foi modificada ou deixou de estar publicada.')
+          await this.#assertMenuParent(client, latest.items, fields.parentItemId ?? 0)
+        },
+        execute: async () => ({ menuItem: normalizeMenuItem(await client.createMenuItem(menu.id, page.id, fields)) }),
+      })
+      return successResult(operationPreparationMessage(this.context.config.requireConfirmation, 'Plano de inclusão no menu preparado; a página AINDA NÃO foi adicionada.'), plan)
+    }))
+
+    server.registerTool('wordpress_prepare_update_menu_item', {
+      title: 'Preparar atualização de item de menu',
+      description: 'Reposiciona item de página existente no MESMO menu (pai/ordem/rótulo), com diff e preflight. Não muda o vínculo de página nem transfere entre menus.',
+      inputSchema: z.object({ wiki: wikiKind.optional(), menuId: z.number().int().positive(), itemId: z.number().int().positive(), fields: menuItemFieldsSchema.refine(value => Object.values(value).some(entry => entry !== undefined), 'Informe ao menos um campo.') }),
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+    }, args => safeToolCall(async () => {
+      const wiki = this.#resolveWiki(args.wiki)
+      const client = this.#requireClient(wiki)
+      const { menu, items, fingerprint } = await this.#menuSnapshot(wiki, args.menuId)
+      const item = items.find(entry => entry.id === args.itemId)
+      if (!item) throw new AppError('NOT_FOUND', 'Item não encontrado neste menu.')
+      if (item.type !== 'post_type' || item.object !== 'page') throw new AppError('POLICY_DENIED', 'Somente itens associados a páginas podem ser editados.')
+      await client.assertContentAllowed('page', await client.getContent('page', item.object_id))
+      if (args.fields.parentItemId !== undefined) await this.#assertMenuParent(client, items, args.fields.parentItemId, item.id)
+      const plan = await this.context.operations.prepare({
+        module: 'wordpress', action: 'update_menu_item', target: `${wiki}:menu:${menu.id}:item:${item.id}`, summary: `Editar item ${item.id} do menu ${menu.name} da ${wikiLabels[wiki]}`,
+        diff: Object.entries(args.fields).map(([field, after]) => ({ field, before: field === 'parentItemId' ? item.parent : field === 'menuOrder' ? item.menu_order : menuItemTitle(item), after })),
+        preflight: async () => {
+          const latest = await this.#menuSnapshot(wiki, menu.id)
+          if (latest.fingerprint !== fingerprint || latest.menu.name !== menu.name) throw new AppError('CONFLICT', 'O menu foi modificado após a preparação; consulte-o novamente.')
+          await client.assertContentAllowed('page', await client.getContent('page', item.object_id))
+          if (args.fields.parentItemId !== undefined) await this.#assertMenuParent(client, latest.items, args.fields.parentItemId, item.id)
+        },
+        execute: async () => ({ menuItem: normalizeMenuItem(await client.updateMenuItem(item.id, args.fields)) }),
+      })
+      return successResult(operationPreparationMessage(this.context.config.requireConfirmation, 'Plano de edição de item de menu preparado.'), plan)
+    }))
+
     server.registerTool('wordpress_search_content', {
       title: 'Pesquisar conteúdo WordPress',
       description: 'Busca páginas ou posts com contexto editável e paginação limitada. Informe wiki=user ou wiki=developer quando houver mais de uma wiki configurada.',
@@ -183,7 +313,7 @@ export class WordPressModule implements IntegrationModule {
 
     server.registerTool('wordpress_prepare_create_content', {
       title: 'Preparar criação de conteúdo WordPress',
-      description: 'Prepara uma página ou post em escopo autorizado. O status padrão é draft. Informe wiki=user ou wiki=developer quando houver mais de uma wiki configurada.',
+      description: 'Prepara uma página ou post em escopo autorizado. O status padrão é draft. Para páginas: antes, consulte menus e sugira posição apenas quando for inequívoca; após criar e publicar, prepare separadamente o item do menu confirmado. Se não for incluída (ambiguidade, rascunho ou falha), informe explicitamente motivo e peça ao usuário menu/item pai. Criar página e criar item são duas escritas independentes, sem atomicidade. Informe wiki=user ou wiki=developer quando houver duas wikis.',
       inputSchema: z.object({ wiki: wikiKind.optional(), kind: contentKind, fields: contentFieldsSchema.extend({ title: z.string().trim().min(1).max(512), status: z.enum(['draft', 'pending', 'private', 'publish', 'future']).default('draft') }) }),
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     }, args => safeToolCall(async () => {
@@ -194,7 +324,7 @@ export class WordPressModule implements IntegrationModule {
         module: 'wordpress', action: 'create_content', target: `${wiki}:new:${args.kind}`, summary: `Criar ${args.kind} na ${wikiLabels[wiki]}: ${args.fields.title}`,
         diff: contentDiff(null, args.fields),
         preflight: async () => client.assertCreateAllowed(args.kind, args.fields),
-        execute: async () => ({ content: normalizeContent(wiki, args.kind, await client.createContent(args.kind, args.fields)) }),
+        execute: async () => ({ content: normalizeContent(wiki, args.kind, await client.createContent(args.kind, args.fields)), ...(args.kind === 'page' ? { menu: { added: false, reason: 'Criar uma página não a insere no menu lateral. Consulte e confirme a posição e prepare uma operação separada; se não for possível, informe ao usuário o motivo e solicite menu e item pai.' } } : {}) }),
       })
       return successResult(operationPreparationMessage(this.context.config.requireConfirmation, 'Plano de criação preparado.'), plan)
     }))
@@ -310,6 +440,47 @@ export class WordPressModule implements IntegrationModule {
       })
       return successResult(operationPreparationMessage(this.context.config.requireConfirmation, 'Plano de lixeira preparado.', 'impacto'), plan)
     }))
+  }
+
+  async #allMenus(client: WordPressClient): Promise<Array<{ id: number; name: string; slug: string }>> {
+    const menus: Array<{ id: number; name: string; slug: string }> = []
+    for (let page = 1; page <= 4; page += 1) {
+      let totalPages: number | undefined
+      const batch = await client.listMenus(page, 50, response => {
+        const value = Number(response.headers.get('X-WP-TotalPages'))
+        if (Number.isInteger(value) && value > 0) totalPages = value
+      })
+      menus.push(...batch)
+      if (batch.length < 50 || page === totalPages) return menus
+    }
+    throw new AppError('POLICY_DENIED', 'Há mais de 200 menus; consulte-os por páginas e informe o menuId explicitamente.')
+  }
+
+  async #menuSnapshot(wiki: WordPressWiki, menuId: number): Promise<{ menu: { id: number; name: string }; items: WordPressMenuItem[]; fingerprint: string }> {
+    const policy = this.#requirePolicy(wiki)
+    if (policy.allowedMenuIds.length && !policy.allowedMenuIds.includes(menuId)) throw new AppError('POLICY_DENIED', 'O menu não está autorizado na política desta wiki.')
+    const client = this.#requireClient(wiki)
+    const menu = await client.getMenu(menuId)
+    const items = await client.getAllMenuItems(menuId)
+    return { menu: { id: menu.id, name: menu.name }, items, fingerprint: menuFingerprint(items) }
+  }
+
+  async #assertMenuParent(client: WordPressClient, items: WordPressMenuItem[], parentId: number, movingId?: number): Promise<void> {
+    if (parentId === 0) return
+    const visited = new Set<number>()
+    let current = parentId
+    while (current !== 0) {
+      if (current === movingId || visited.has(current)) throw new AppError('POLICY_DENIED', 'A posição proposta cria um ciclo na hierarquia do menu.')
+      visited.add(current)
+      const parent = items.find(item => item.id === current)
+      if (!parent) throw new AppError('POLICY_DENIED', 'O item pai não existe neste menu.')
+      if (parent.type === 'post_type' && parent.object === 'page') {
+        await client.assertContentAllowed('page', await client.getContent('page', parent.object_id))
+      } else if (parent.type !== 'custom') {
+        throw new AppError('POLICY_DENIED', 'O item pai deve ser uma página autorizada ou um agrupador personalizado.')
+      }
+      current = parent.parent
+    }
   }
 
   #configuredWikis(): WordPressWiki[] {

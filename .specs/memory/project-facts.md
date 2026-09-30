@@ -20,3 +20,4 @@
 - O perfil TFS Sarah expõe `activity`, `remainingWork` e `blocked` apenas para Tasks; Activity valida as sete opções visíveis na interface.
 - `MCP_REQUIRE_CONFIRMATION` é `true` por padrão; `false` remove somente o campo literal `CONFIRMO` de `operations_apply`.
 - WordPress aceita os perfis `user` e `developer` com a mesma credencial; `WP_BASE_URL` legado representa `user`, e dois perfis exigem `wiki` explícito nas ferramentas quando ambos estão configurados.
+- WordPress oferece consulta de menus clássicos, itens e sugestão de posição: wiki developer prioriza menu Software e desenvolvimento para sistemas; wiki user usa nome do sistema para identificar menu. A inclusão de página em menu é uma segunda operação confirmável, separada da criação da página.

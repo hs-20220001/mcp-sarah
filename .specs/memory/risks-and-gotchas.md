@@ -14,3 +14,5 @@
 - Deleção de comentário TFS é uma mutação recuperável da API de comentários; alterações e deleções precisam comparar a versão do comentário no preflight.
 - Com `MCP_REQUIRE_CONFIRMATION=false`, planos preparados podem ser aplicados sem pausa humana; o token, o preflight e a aprovação independente do host MCP continuam sendo necessários.
 - Se as URLs `WP_USER_BASE_URL` e `WP_DEVELOPER_BASE_URL` forem iguais, a seleção diferencia o perfil e sua política, mas não cria ambientes WordPress separados; a separação remota depende de URLs ou escopos realmente distintos.
+- A API WordPress de menus clássicos não expõe `modified_gmt` de menus/itens: comparar nome e snapshot estrutural no preflight não evita corrida entre leitura final e escrita. A inclusão só aceita páginas publicadas e usa `allowedMenuIds` por wiki (lista vazia irrestrita).
+- Página e item de menu são duas escritas independentes: se a segunda falhar ou o local não estiver claro, a resposta deve informar explicitamente que a página não está no menu e pedir ao usuário o menu/item pai.

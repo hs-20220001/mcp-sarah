@@ -24,6 +24,8 @@
 - Quando configuradas, páginas WordPress precisam pertencer às raízes autorizadas e posts às categorias autorizadas.
 - Quando configuradas, raízes de mídia limitam os diretórios; MIME type e tamanho são sempre validados.
 - Mídias existentes precisam estar associadas a conteúdo autorizado.
+- Escritas em menus podem ser restringidas por `allowedMenuIds` por wiki; a inclusão exige página publicada dentro do escopo e item pai existente no mesmo menu. A leitura de menus/itens ainda depende das permissões da credencial WordPress.
+- A ausência de `modified_gmt` nos itens do menu exige comparação do snapshot completo no preflight; criação de página e inclusão em menu não são atômicas.
 
 O modo irrestrito melhora o primeiro uso, mas amplia o impacto possível da credencial WordPress. Use uma conta dedicada com o menor privilégio aceitável e configure allowlists quando quiser limitar o agente.
 

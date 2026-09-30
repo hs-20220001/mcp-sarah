@@ -131,4 +131,13 @@ describe('WordPressClient', () => {
     await expect(client.assertCreateAllowed('post', { title: 'Post', categoryIds: [20] })).resolves.toBeUndefined()
     expect(fetchMock).not.toHaveBeenCalled()
   })
+
+  it('lê um menu com exatamente 100 itens sem buscar página fora do limite', async () => {
+    const policy = await loadWordPressPolicy(resolve('config/wordpress.yaml'))
+    const items = Array.from({ length: 100 }, (_, index) => ({ id: index + 1, menus: 5, parent: 0, menu_order: index + 1, title: { raw: `Item ${index + 1}` }, type: 'post_type', object: 'page', object_id: index + 1, url: 'https://docs.example/', status: 'publish' }))
+    fetchMock.mockResolvedValue(new Response(JSON.stringify(items), { status: 200, headers: { 'Content-Type': 'application/json', 'X-WP-TotalPages': '1' } }))
+    const client = new WordPressClient({ baseUrl: 'https://docs.example', username: 'user', applicationPassword: 'secret' }, policy, new HttpClient({ timeoutMs: 1_000, fetchImpl: fetchMock }))
+    expect(await client.getAllMenuItems(5)).toHaveLength(100)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
 })

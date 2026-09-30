@@ -7,6 +7,7 @@ import { AppError } from '../../core/errors.js'
 const wordpressPolicySchema = z.object({
   allowedPageRootIds: z.array(z.number().int().positive()),
   allowedPostCategoryIds: z.array(z.number().int().positive()),
+  allowedMenuIds: z.array(z.number().int().positive()).default([]),
   allowedStatuses: z.array(z.enum(['draft', 'pending', 'private', 'publish', 'future'])).min(1),
   allowedMediaMimeTypes: z.array(z.string().min(1)).min(1),
   maxMediaBytes: z.number().int().positive(),

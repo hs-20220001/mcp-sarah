@@ -44,7 +44,7 @@ describe('MCP server', () => {
     await client.connect(clientTransport)
     try {
       const tools = await client.listTools()
-      expect(tools.tools).toHaveLength(27)
+      expect(tools.tools).toHaveLength(32)
       expect(tools.tools.some(tool => tool.name.startsWith('tfs_'))).toBe(true)
       expect(tools.tools.some(tool => tool.name.startsWith('wordpress_'))).toBe(true)
       expect(tools.tools.some(tool => tool.name === 'tfs_list_work_item_comments')).toBe(true)
@@ -93,7 +93,7 @@ describe('MCP server', () => {
     await client.connect(clientTransport)
     try {
       const tools = (await client.listTools()).tools
-      expect(tools).toHaveLength(27)
+      expect(tools).toHaveLength(32)
       const createWorkItemTool = tools.find(tool => tool.name === 'tfs_prepare_create_work_item')
       const updateWorkItemTool = tools.find(tool => tool.name === 'tfs_prepare_update_work_item')
       expect(createWorkItemTool?.description).toContain('comece a descrição em HTML')
@@ -125,6 +125,12 @@ describe('MCP server', () => {
       expect(tools.find(tool => tool.name === 'tfs_prepare_delete_work_item_comment')?.annotations?.destructiveHint).toBe(true)
       expect(tools.find(tool => tool.name === 'operations_apply')?.annotations?.readOnlyHint).toBe(false)
       expect(tools.find(tool => tool.name === 'wordpress_prepare_trash_media')?.annotations?.destructiveHint).toBe(true)
+      expect(tools.find(tool => tool.name === 'wordpress_list_menus')?.annotations?.readOnlyHint).toBe(true)
+      expect(tools.find(tool => tool.name === 'wordpress_list_menu_items')?.annotations?.readOnlyHint).toBe(true)
+      expect(tools.find(tool => tool.name === 'wordpress_suggest_menu_placement')?.annotations?.readOnlyHint).toBe(true)
+      expect(tools.find(tool => tool.name === 'wordpress_prepare_create_content')?.description).toContain('duas escritas independentes')
+      expect(tools.find(tool => tool.name === 'wordpress_prepare_create_menu_item')?.annotations?.readOnlyHint).toBe(false)
+      expect(tools.find(tool => tool.name === 'wordpress_prepare_update_menu_item')?.annotations?.readOnlyHint).toBe(false)
     } finally {
       await client.close()
       await server.close()

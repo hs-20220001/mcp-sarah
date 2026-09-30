@@ -1,9 +1,9 @@
 ---
-change: changes/tfs-pbi-story-emphasis.md
+change: changes/wordpress-navigation-menus.md
 status: concluded
-updated: 2026-09-29
+updated: 2026-09-30
 ---
 
 # Mudança ativa
 
-Destaque das palavras-chave na história de usuário de PBIs.
+Menus laterais WordPress nas duas wikis.

@@ -36,6 +36,32 @@ export interface WordPressMedia {
   alt_text: string
 }
 
+export interface WordPressMenu {
+  id: number
+  name: string
+  slug: string
+  locations?: string[]
+}
+
+export interface WordPressMenuItem {
+  id: number
+  title: WordPressTextField | string
+  status: string
+  type: string
+  object: string
+  object_id: number
+  url: string
+  parent: number
+  menu_order: number
+  menus: number
+}
+
+export interface MenuItemFieldsInput {
+  parentItemId?: number | undefined
+  menuOrder?: number | undefined
+  title?: string | undefined
+}
+
 export interface ContentFieldsInput {
   title?: string | undefined
   slug?: string | undefined

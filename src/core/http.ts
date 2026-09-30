@@ -17,7 +17,7 @@ export class HttpClient {
     this.#fetch = options.fetchImpl ?? fetch
   }
 
-  async request<T>(url: string, init: RequestInit = {}, write = false): Promise<T> {
+  async request<T>(url: string, init: RequestInit = {}, write = false, onResponse?: (response: Response) => void): Promise<T> {
     const attempts = write ? 1 : 3
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       const controller = new AbortController()
@@ -31,6 +31,7 @@ export class HttpClient {
           }
           throw mapHttpError(response.status)
         }
+        onResponse?.(response)
         if (response.status === 204) return undefined as T
         return await response.json() as T
       } catch (error) {

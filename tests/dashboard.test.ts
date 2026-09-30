@@ -48,7 +48,7 @@ describe('development dashboard', () => {
         tools: Array<{ name: string }>
         status: { modules: Array<{ id: string; details?: Record<string, unknown> }> }
       }
-      expect(overview.tools).toHaveLength(27)
+      expect(overview.tools).toHaveLength(32)
       expect(overview.tools.some(tool => tool.name === 'operations_apply')).toBe(true)
       expect(overview.status.modules.find(module => module.id === 'wordpress')?.details).toMatchObject({
         pageScope: 'per-wiki',
