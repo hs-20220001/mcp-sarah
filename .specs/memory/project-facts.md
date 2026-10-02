@@ -11,13 +11,18 @@
 - Exclusões são sempre recuperáveis.
 - Planos ficam apenas em memória e expiram por padrão em 15 minutos.
 - Documentação e mensagens públicas usam português do Brasil; implementação usa inglês.
+- O histórico público fica em `CHANGELOG.md`, com SemVer, datas ISO 8601 e categorias por impacto; novas alterações ficam em Não lançado até fechar a versão. A consolidação inicial 0.1.0 usa datas documentais das specs, sem presumir publicação; manter pacote, lockfile e identificação/log MCP sincronizados ao mudar a versão.
 - Comentários de work items TFS usam a API `7.0-preview.3`, separada da versão geral configurada para Work Items.
 - O módulo TFS expõe `Acceptance Criteria` como `acceptanceCriteria` e inclui esse campo e `customFields` autorizados nos resultados paginados; descrição integral segue disponível no detalhe do item.
 - Na descrição padrão de PBI, a história de usuário fica inteira entre aspas e em itálico, com `Como`, `quero` e `para` também em negrito; trata-se de orientação MCP e não de transformação automática do HTML recebido.
+- Description/Steps to Reproduce e Acceptance Criteria recebem orientação MCP de HTML simples (parágrafos/destaques/listas), sem template rígido. Markdown do chat não é formato de envio; cliente e servidor preservam strings, sem conversão automática.
 - O perfil TFS Sarah mapeia `priority`, `effort`, `businessValue` e os seis campos Planning configurados; valores enumerados localmente aceitam códigos ou rótulos definidos.
 - A orientação de Tasks para PBI sugere quatro filhas por padrão (Desenvolvimento, Documentação, Comunicação e Testes), com prefixo de título em pt-BR, `parentId` do PBI e Activity MCP em inglês.
-- Na criação de Task filha de PBI, `assignedTo`, `areaPath` e `iterationPath` ausentes herdam valores existentes do pai; o diff mostra os defaults e um conflito de revisão do PBI bloqueia a aplicação.
-- O perfil TFS Sarah expõe `activity`, `remainingWork` e `blocked` apenas para Tasks; Activity valida as sete opções visíveis na interface.
+- Na criação de Task filha de PBI ou Bug, `assignedTo`, `areaPath` e `iterationPath` ausentes herdam valores existentes do pai; o diff mostra os defaults e um conflito de revisão do pai bloqueia a aplicação. Edições não herdam automaticamente.
+- O perfil TFS Sarah expõe `activity` para Bug e Task; `remainingWork` e `blocked` são exclusivos de Task. Activity valida as sete opções visíveis na interface; criação de Bug usa Development por padrão.
+- Bugs novos exigem Feature pai, área e iteração. A hierarquia Sarah é Epic → Feature → PBI/Bug → Task; relações legadas não são migradas em edições não relacionadas.
+- A orientação MCP de Bug pesquisa prefixos de títulos e caminhos/pais reais, apresenta proposta estruturada e exige aprovação conversacional mesmo sem CONFIRMO literal. Para Bug, sugere somente Task Testing opcional com prefixo Testes -.
+- `docs/integrations/tfs-effort-reference.md` documenta as 27 combinações fornecidas em 2026-10-02. A matriz também está nas descrições MCP; a preparação calcula Effort quando dimensões de Bug são fornecidas e usa dimensões atuais nas edições parciais.
 - `MCP_REQUIRE_CONFIRMATION` é `true` por padrão; `false` remove somente o campo literal `CONFIRMO` de `operations_apply`.
 - WordPress aceita os perfis `user` e `developer` com a mesma credencial; `WP_BASE_URL` legado representa `user`, e dois perfis exigem `wiki` explícito nas ferramentas quando ambos estão configurados.
 - WordPress oferece consulta de menus clássicos, itens e sugestão de posição: wiki developer prioriza menu Software e desenvolvimento para sistemas; wiki user usa nome do sistema para identificar menu. A inclusão de página em menu é uma segunda operação confirmável, separada da criação da página.

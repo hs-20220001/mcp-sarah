@@ -12,6 +12,7 @@
 - Por padrão, toda escrita exige plano, diff, token curto e `CONFIRMO`. Com `MCP_REQUIRE_CONFIRMATION=false`, somente a confirmação humana literal é dispensada: o plano, o token, o preflight, a escrita única e a auditoria continuam obrigatórios.
 - Use essa opção somente em ambiente local confiável, porque qualquer plano preparado poderá ser aplicado sem uma pausa para revisão humana.
 - Essa variável não altera uma aprovação adicional feita pelo host MCP, como `default_tools_approval_mode`.
+- Criação/edição de Bug e sua Task de Testes orientam o agente a aguardar aprovação conversacional da proposta mesmo com `MCP_REQUIRE_CONFIRMATION=false`, sem exigir a palavra literal `CONFIRMO`. Essa orientação não constitui uma nova trava técnica: o servidor não verifica a fala do usuário e um plano ainda pode ser aplicado pelo chamador com token válido. Demais fluxos mantêm o modo global configurado.
 - A aplicação relê o recurso e bloqueia conflitos.
 - Escritas não recebem retry automático.
 - TFS usa somente recycle bin; WordPress usa somente `force=false`.

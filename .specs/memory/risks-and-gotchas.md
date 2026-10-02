@@ -3,9 +3,13 @@
 - Não registrar objetos de erro HTTP sem redação; eles podem conter cabeçalhos e corpos sensíveis.
 - O PAT TFS e a Application Password WordPress devem existir somente no ambiente local.
 - IDs e nomes de campos customizados variam entre processos TFS; somente aliases permitidos podem ser escritos.
+- Quebras de linha simples e listas digitadas em texto/Markdown podem ficar concatenadas nos campos HTML do TFS. Orientar tags de bloco e listas reais; testes simulados provam preservação do payload, não a aparência/sanitização da instalação remota.
 - A política local não confirma disponibilidade, permissões ou allowed values remotos de campos TFS; `Personas affected` e `Mapped on SpecMap` continuam sem aliases porque seus reference names não foram verificados.
+- Activity em Bug foi autorizado a partir do print; a gravação real e associação do reference name ao processo não foram testadas nesta mudança. Descoberta de caminhos/prefixos depende das leituras do agente; a preparação exige os caminhos, mas não os verifica contra toda a árvore remota.
+- Aprovação conversacional de proposta de Bug é orientação ao agente, não verificação técnica da fala do usuário no servidor; modo sem CONFIRMO mantém token/preflight e aprovação independente do host.
 - Um conjunto de quatro Tasks é preparado como quatro operações independentes, sem atomicidade do lote; `Personas affected` em Task também segue sem alias até confirmação do reference name remoto.
-- Para herdar responsável de identidade TFS, prefira `uniqueName` em vez de `displayName` homônimo; PBI sem responsável conhecido não deve gerar atribuição inventada. O preflight de revisão não torna atômica a leitura do pai e a criação da Task.
+- Para herdar responsável de identidade TFS, prefira `uniqueName` em vez de `displayName` homônimo; PBI/Bug sem responsável conhecido não deve gerar atribuição inventada. O preflight de revisão não torna atômica a leitura do pai e a criação da Task.
+- Testes de fetch com várias leituras devem produzir uma Response nova por chamada: mockResolvedValue da mesma Response causa consumo repetido do body. Ao verificar documentação no Windows, separar linhas com /\r?\n/.
 - Área, iteração, estado, raiz de página e categoria devem vir da API ou de política explícita.
 - Com allowlists WordPress vazias, a credencial pode alcançar todo conteúdo permitido pela API e uploads podem ler qualquer imagem/PDF acessível ao processo.
 - Mídias precisam ser novamente verificadas por tipo real, tamanho e hash, mesmo quando o caminho local está irrestrito.

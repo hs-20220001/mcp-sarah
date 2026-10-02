@@ -19,7 +19,6 @@ allowedParentTypes:
     - Bug
   Bug:
     - Feature
-    - Product Backlog Item
 customFields:
   priority:
     referenceName: Microsoft.VSTS.Common.Priority
@@ -28,6 +27,7 @@ customFields:
     referenceName: Microsoft.VSTS.Common.Activity
     allowedWorkItemTypes:
       - Task
+      - Bug
     values:
       Communication: Communication
       Deployment: Deployment
@@ -84,6 +84,7 @@ customFields:
       "3": "3 - Alta"
   effort:
     referenceName: Microsoft.VSTS.Scheduling.Effort
+    valueType: number
   businessValue:
     referenceName: Microsoft.VSTS.Common.BusinessValue
   severity:

@@ -98,6 +98,7 @@ Testes ao vivo não fazem parte do fluxo padrão. `test:live` faz apenas probe d
 
 ## Documentação
 
+- [Histórico de alterações e versões](CHANGELOG.md)
 - [Arquitetura](docs/architecture.md)
 - [Passo a passo para iniciantes](docs/getting-started.md)
 - [Configuração](docs/configuration.md)

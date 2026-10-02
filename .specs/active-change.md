@@ -1,9 +1,9 @@
 ---
-change: changes/wordpress-navigation-menus.md
+change: changes/project-changelog.md
 status: concluded
-updated: 2026-09-30
+updated: 2026-10-02
 ---
 
 # Mudança ativa
 
-Menus laterais WordPress nas duas wikis.
+Histórico de alterações do MCP Sarah com datas verificadas, nome convencional e versionamento semântico.

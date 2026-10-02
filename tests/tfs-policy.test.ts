@@ -33,7 +33,7 @@ describe('TFS policy', () => {
     expect(() => resolveCustomFields(policy, { size: 4 })).toThrow(/Valores aceitos/)
   })
 
-  it('mapeia Activity e valida os campos exclusivos de Task', async () => {
+  it('mapeia Activity em Bug/Task e mantém Remaining Work e Blocked exclusivos de Task', async () => {
     const policy = await loadTfsPolicy(resolve('config/tfs-sarah.yaml'))
     expect(resolveCustomFields(policy, { activity: 'Testing', remainingWork: 4.5, blocked: true }, 'Task')).toEqual({
       'Microsoft.VSTS.Common.Activity': 'Testing',
@@ -41,10 +41,14 @@ describe('TFS policy', () => {
       'Microsoft.VSTS.CMMI.Blocked': true,
     })
     expect(resolveCustomFields(policy, { activity: 'Documentation' }, 'Task')).toEqual({ 'Microsoft.VSTS.Common.Activity': 'Documentation' })
+    expect(resolveCustomFields(policy, { activity: 'Development' }, 'Bug')).toEqual({ 'Microsoft.VSTS.Common.Activity': 'Development' })
     expect(() => resolveCustomFields(policy, { activity: 'Invalid' }, 'Task')).toThrow(/Valores aceitos/)
-    expect(() => resolveCustomFields(policy, { activity: 'Testing' }, 'Product Backlog Item')).toThrow(/só está permitido para: Task/)
+    expect(() => resolveCustomFields(policy, { activity: 'Testing' }, 'Product Backlog Item')).toThrow(/só está permitido para: Task, Bug/)
     expect(() => resolveCustomFields(policy, { remainingWork: '4' }, 'Task')).toThrow(/tipo number/)
     expect(() => resolveCustomFields(policy, { blocked: 'true' }, 'Task')).toThrow(/tipo boolean/)
+    expect(() => resolveCustomFields(policy, { remainingWork: 4 }, 'Bug')).toThrow(/só está permitido para: Task/)
+    expect(() => resolveCustomFields(policy, { blocked: false }, 'Bug')).toThrow(/só está permitido para: Task/)
+    expect(() => resolveCustomFields(policy, { effort: '8' }, 'Bug')).toThrow(/tipo number/)
   })
 
   it('rejeita campos não autorizados', async () => {
@@ -55,6 +59,11 @@ describe('TFS policy', () => {
   it('valida a hierarquia configurada sem inventar relações', async () => {
     const policy = await loadTfsPolicy(resolve('config/tfs-sarah.yaml'))
     expect(() => assertParentType(policy, 'Task', 'Product Backlog Item')).not.toThrow()
+    expect(() => assertParentType(policy, 'Task', 'Bug')).not.toThrow()
+    expect(() => assertParentType(policy, 'Product Backlog Item', 'Feature')).not.toThrow()
+    expect(() => assertParentType(policy, 'Bug', 'Feature')).not.toThrow()
+    expect(() => assertParentType(policy, 'Feature', 'Epic')).not.toThrow()
+    expect(() => assertParentType(policy, 'Bug', 'Product Backlog Item')).toThrow(/não pode ter/)
     expect(() => assertParentType(policy, 'Feature', 'Task')).toThrow(/não pode ter/)
   })
 })
