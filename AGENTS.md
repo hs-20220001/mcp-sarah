@@ -18,6 +18,8 @@ Este arquivo é a entrada rápida para qualquer agente de IA que trabalhe no MCP
 - Nunca use `destroy=true` no TFS nem `force=true` no WordPress.
 - `stdout` é exclusivo do protocolo MCP. Logs estruturados usam `stderr`.
 - Não invente estados, áreas, iterações, categorias, campos ou hierarquias remotas.
+- Oracle oferece somente ferramentas de consulta; DEV é o ambiente padrão, HOM/PRO exigem pedido explícito e pedidos de escrita recebem orientação, nunca execução.
+- Funções Oracle de packages podem ter efeitos colaterais mesmo em SELECT; allowlist vazia `ORACLE_READONLY_FUNCTIONS_<AMBIENTE>` permite todas as funções compatíveis concedidas ao usuário e lista preenchida restringe por `OWNER.PACKAGE.FUNCTION`; use transação READ ONLY.
 - Não faça commit ou push sem pedido explícito.
 
 ## Fontes rápidas

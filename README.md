@@ -1,6 +1,6 @@
 # MCP Sarah
 
-Servidor MCP local e modular para oferecer a agentes de IA acesso controlado a ferramentas internas. A primeira versão integra Azure DevOps Server/TFS e WordPress sem depender de um provedor de IA específico.
+Servidor MCP local e modular para oferecer a agentes de IA acesso controlado a ferramentas internas. Integra Azure DevOps Server/TFS, WordPress e Oracle sem depender de um provedor de IA específico.
 
 ## Características
 
@@ -8,6 +8,7 @@ Servidor MCP local e modular para oferecer a agentes de IA acesso controlado a f
 - Painel local de orientação e status aberto por `npm run dev`.
 - Módulos independentes, registrados automaticamente quando fazem parte do projeto.
 - Consultas paginadas e resultados estruturados.
+- Consultas Oracle somente leitura: registros, metadados de tabelas e funções escalares de packages.
 - Comentários de work items TFS com leitura, inserção, alteração e deleção recuperável.
 - Escritas em duas fases: preparar, revisar o diff e aplicar após `CONFIRMO`.
 - Modo local opt-in sem `CONFIRMO` via `MCP_REQUIRE_CONFIRMATION=false`, mantendo token, preflight e auditoria.
@@ -21,6 +22,7 @@ Servidor MCP local e modular para oferecer a agentes de IA acesso controlado a f
 - Node.js 20 ou superior; o desenvolvimento atual usa Node 24.
 - PAT do Azure DevOps com acesso mínimo necessário a Work Items e metadados do projeto.
 - WordPress 5.6 ou superior, HTTPS e Application Password dedicado à integração.
+- Oracle Database acessível por rede e contas dedicadas com permissões mínimas de leitura; Thin mode é o padrão, e Oracle Instant Client 19+ pode ser configurado para autenticação legada em Thick mode.
 
 ## Configuração
 
@@ -40,6 +42,10 @@ Você pode restringir escritas no WordPress em `config/wordpress.yaml`:
 Listas vazias significam acesso irrestrito ao escopo correspondente. Da mesma forma, `WP_ALLOWED_MEDIA_ROOTS` vazio permite mídia de qualquer caminho local legível. Formato, tamanho, hash, confirmação e lixeira segura continuam obrigatórios.
 
 Para uma única wiki, `WP_BASE_URL` continua disponível e representa a wiki pública dos usuários. Para duas wikis, configure `WP_USER_BASE_URL` e `WP_DEVELOPER_BASE_URL`; ambas compartilham usuário, Application Password e raízes locais de mídia. Nesse caso, informe `wiki=user` ou `wiki=developer` em cada ferramenta WordPress. Sem essa escolha, o servidor retorna `AMBIGUOUS_REQUEST` sem acessar o WordPress.
+
+### Oracle
+
+Configure `ORACLE_CONNECT_STRING_DEV`, `ORACLE_USER_DEV` e `ORACLE_PASSWORD_DEV`; os equivalentes `_HOM` e `_PRO` configuram homologação e produção. O MCP usa sempre DEV como padrão e só acessa HOM/PRO quando isso for pedido. Para aliases TNS, configure `ORACLE_TNS_ADMIN_<AMBIENTE>` para o diretório que contém `tnsnames.ora`. As ferramentas só consultam: executam `SELECT`, descrevem tabelas e consultam funções de packages. `ORACLE_READONLY_FUNCTIONS_<AMBIENTE>` vazia permite qualquer função compatível que o usuário Oracle possa executar; preenchida, restringe às funções listadas por nome completo `OWNER.PACKAGE.FUNCTION`. Como funções podem ter efeitos próprios mesmo em `READ ONLY`, limite as permissões do usuário Oracle e use uma lista restritiva quando apropriado. Um usuário alternativo pode ser informado por chamada e usará a senha do ambiente configurado.
 
 ## Começando sem experiência técnica
 
@@ -107,6 +113,7 @@ Testes ao vivo não fazem parte do fluxo padrão. `test:live` faz apenas probe d
 - [Tratamento de erros](docs/errors.md)
 - [Integração TFS](docs/integrations/tfs.md)
 - [Integração WordPress](docs/integrations/wordpress.md)
+- [Configuração Oracle e catálogo de ferramentas](docs/configuration.md#oracle)
 - [Fluxo assistido por IA](.specs/README.md)
 
 ## Adicionando uma integração

@@ -6,6 +6,7 @@
 - Usar uma credencial por integração e o menor privilégio possível.
 - Nunca registrar headers, PAT ou Application Password.
 - Rotacionar a credencial quando houver suspeita de exposição.
+- Credenciais Oracle devem ser variáveis locais por ambiente (`DEV`, `HOM`, `PRO`); usuário alternativo na ferramenta reutiliza a senha do mesmo ambiente.
 
 ## Escritas
 
@@ -29,6 +30,14 @@
 - A ausência de `modified_gmt` nos itens do menu exige comparação do snapshot completo no preflight; criação de página e inclusão em menu não são atômicas.
 
 O modo irrestrito melhora o primeiro uso, mas amplia o impacto possível da credencial WordPress. Use uma conta dedicada com o menor privilégio aceitável e configure allowlists quando quiser limitar o agente.
+
+## Oracle
+
+- O módulo só oferece leituras: `SELECT`, metadados e chamada de função de package. Toda conexão inicia `SET TRANSACTION READ ONLY`, executa uma única ação e fecha sem retry automático.
+- Use contas Oracle dedicadas com menor privilégio: leitura apenas dos schemas necessários e `EXECUTE` somente em packages/functions aprovados como seguros. Nunca conceda papéis amplos ao usuário do MCP. Allowlist vazia em `ORACLE_READONLY_FUNCTIONS_<AMBIENTE>` permite chamar qualquer função compatível autorizada no Oracle; uma allowlist preenchida restringe aos nomes exatos `OWNER.PACKAGE.FUNCTION`.
+- Uma função chamada por `SELECT` pode ter efeitos autônomos ou externos que não são bloqueados pela transação READ ONLY. A ferramenta não consegue provar ausência desses efeitos; o DBA deve auditar os packages permitidos.
+- Os valores SQL devem ser fornecidos por binds; identificadores de schema, tabela, package e função aceitam somente identificadores simples e são consultados em metadados visíveis ao usuário.
+- DEV é o padrão e não há fallback automático para HOM/PRO. Não exponha resultados sensíveis além do necessário.
 
 ## Painel local
 

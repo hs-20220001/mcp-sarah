@@ -1,9 +1,9 @@
 ---
-change: changes/project-changelog.md
+change: changes/oracle-readonly.md
 status: concluded
-updated: 2026-10-02
+updated: 2026-10-14
 ---
 
 # Mudança ativa
 
-Histórico de alterações do MCP Sarah com datas verificadas, nome convencional e versionamento semântico.
+Adicionar integração Oracle somente leitura, com perfis DEV/HOM/PRO, consultas parametrizadas, descrição de tabelas e descoberta/execução de funções de packages sob transação Oracle READ ONLY.

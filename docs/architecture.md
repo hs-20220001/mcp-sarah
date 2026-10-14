@@ -7,7 +7,7 @@
 ## Camadas
 
 1. **Núcleo:** configuração, erros, cliente HTTP, logger, snapshots e operações confirmáveis.
-2. **Módulos:** TFS e WordPress possuem cliente, política, normalização e ferramentas próprios.
+2. **Módulos:** TFS, WordPress e Oracle possuem clientes e ferramentas próprios. Oracle não possui ferramentas de escrita.
 3. **Transporte:** apenas `stdio` para o protocolo MCP nesta fase.
 4. **Painel de desenvolvimento:** HTTP somente em loopback, para status, catálogo e orientação; não é um transporte MCP e não executa mutações.
 
@@ -39,6 +39,8 @@ Na aplicação, o núcleo:
 5. registra resultado ou falha sem repetir a mutação.
 
 Cada plano representa uma única mutação remota. Reiniciar o processo descarta planos pendentes.
+
+O cliente Oracle abre uma conexão por chamada e inicia uma transação `READ ONLY`; não repete operações e fecha a conexão ao concluir. O módulo suporta consulta `SELECT`, metadados de tabelas e funções escalares de packages.
 
 ## Dados e limites
 

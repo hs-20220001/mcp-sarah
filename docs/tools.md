@@ -42,6 +42,17 @@ Na criação de Bug, o MCP orienta pesquisar o prefixo real do sistema, áreas/i
 - `wordpress_prepare_update_media`: prepara metadados.
 - `wordpress_prepare_trash_media`: usa lixeira ou falha sem fallback permanente.
 
+## Oracle
+
+Todas as ferramentas Oracle escolhem `DEV` por padrão. Use `HOM` ou `PRO` somente quando o usuário pedir esse ambiente; não alterne silenciosamente. Um campo `username` opcional tenta a conexão com outro usuário e a senha já configurada para aquele ambiente. Aliases TNS exigem `ORACLE_TNS_ADMIN_<AMBIENTE>` apontando ao diretório com `tnsnames.ora` em Thin mode; em Thick mode, usam o diretório TNS compartilhado configurado para o processo. Se pedirem uma alteração no banco, informe que o MCP não pode realizá-la e ofereça orientação.
+
+- `oracle_query`: executa uma única instrução `SELECT` (sem `WITH` ou `FOR UPDATE`), com binds nomeados e no máximo 500 linhas.
+- `oracle_describe_table`: consulta colunas, tipos, precisão/escala, nulabilidade e defaults visíveis.
+- `oracle_list_package_functions`: lista funções de package e parâmetros disponíveis em `ALL_PROCEDURES`/`ALL_ARGUMENTS`.
+- `oracle_call_package_function`: executa função escalar com argumentos IN escalares; lista vazia em `ORACLE_READONLY_FUNCTIONS_<AMBIENTE>` permite qualquer função compatível, enquanto lista preenchida restringe a execução aos nomes exatos listados. Recusa sobrecarga ambígua, OUT/IN OUT e tipos compostos.
+
+As chamadas começam uma transação Oracle `READ ONLY` e fecham a conexão. Não há ferramenta de DML, DDL ou procedure. Lista vazia é irrestrita para execução de funções e pode ampliar efeitos colaterais; `READ ONLY` não neutraliza transações autônomas ou efeitos externos. Restrinja o usuário Oracle e use allowlist preenchida quando necessária.
+
 Ferramentas `prepare` alteram somente o estado temporário local do servidor. A mutação externa ocorre exclusivamente em `operations_apply`.
 
 As descrições de criação/edição e os schemas de `description`/`acceptanceCriteria` orientam [HTML simples e legível](integrations/tfs.md#formatação-dos-campos-de-texto-rico): parágrafos separados, rótulos opcionais em negrito e listas reais. Markdown na proposta do chat não substitui HTML nos argumentos enviados ao TFS. A organização é flexível, sem template obrigatório nem conversão automática pelo servidor.

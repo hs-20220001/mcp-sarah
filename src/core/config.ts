@@ -3,7 +3,24 @@ import { delimiter, resolve } from 'node:path'
 
 loadDotEnv({ quiet: true })
 
-export type ModuleId = 'tfs' | 'wordpress'
+export type ModuleId = 'tfs' | 'wordpress' | 'oracle'
+
+export const oracleEnvironments = ['DEV', 'HOM', 'PRO'] as const
+export type OracleEnvironment = (typeof oracleEnvironments)[number]
+
+export interface OracleProfileConfig {
+  connectString: string
+  username: string
+  password: string
+  tnsAdmin?: string
+  readonlyFunctions: string[]
+}
+
+export interface OracleConfig {
+  profiles: Partial<Record<OracleEnvironment, OracleProfileConfig>>
+  clientLibDir?: string
+  clientConfigDir?: string
+}
 
 export const wordPressWikis = ['user', 'developer'] as const
 export type WordPressWiki = (typeof wordPressWikis)[number]
@@ -41,6 +58,7 @@ export interface AppConfig {
   auditLogPath?: string
   tfs?: TfsConfig
   wordpress?: WordPressConfig
+  oracle?: OracleConfig
   configurationIssues: Partial<Record<ModuleId, string[]>>
 }
 
@@ -64,6 +82,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd = process.c
   const configurationIssues: AppConfig['configurationIssues'] = {}
   let tfs: TfsConfig | undefined
   let wordpress: WordPressConfig | undefined
+  let oracle: OracleConfig | undefined
 
   {
     const organizationUrl = env.AZURE_DEVOPS_ORG_URL
@@ -128,6 +147,44 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd = process.c
     }
   }
 
+  {
+    const profiles: Partial<Record<OracleEnvironment, OracleProfileConfig>> = {}
+    const missingByEnvironment: string[][] = []
+    for (const environment of oracleEnvironments) {
+      const suffix = `_${environment}`
+      const connectString = env[`ORACLE_CONNECT_STRING${suffix}`]
+      const username = env[`ORACLE_USER${suffix}`]
+      const password = env[`ORACLE_PASSWORD${suffix}`]
+      const tnsAdmin = env[`ORACLE_TNS_ADMIN${suffix}`]?.trim()
+      const readonlyFunctions = (env[`ORACLE_READONLY_FUNCTIONS${suffix}`] ?? '').split(',').map(value => value.trim().toUpperCase()).filter(Boolean)
+      const invalidFunctions = readonlyFunctions.filter(value => !/^[A-Z][A-Z0-9_$#]{0,127}\.[A-Z][A-Z0-9_$#]{0,127}\.[A-Z][A-Z0-9_$#]{0,127}$/.test(value))
+      if (invalidFunctions.length > 0) configurationIssues.oracle = [...(configurationIssues.oracle ?? []), `ORACLE_READONLY_FUNCTIONS${suffix} aceita apenas OWNER.PACKAGE.FUNCTION`]
+      const missing = requiredValues({
+        [`ORACLE_CONNECT_STRING${suffix}`]: connectString,
+        [`ORACLE_USER${suffix}`]: username,
+        [`ORACLE_PASSWORD${suffix}`]: password,
+      })
+      if (missing.length > 0) missingByEnvironment.push(missing)
+      else if (connectString && username && password) profiles[environment] = {
+        connectString,
+        username,
+        password,
+        ...(tnsAdmin ? { tnsAdmin: resolve(cwd, tnsAdmin) } : {}),
+        readonlyFunctions: readonlyFunctions.filter(value => !invalidFunctions.includes(value)),
+      }
+    }
+    if (Object.keys(profiles).length > 0) {
+      const clientLibDir = env.ORACLE_CLIENT_LIB_DIR?.trim()
+      const clientConfigDir = env.ORACLE_CLIENT_CONFIG_DIR?.trim()
+      oracle = {
+        profiles,
+        ...(clientLibDir ? { clientLibDir: resolve(cwd, clientLibDir) } : {}),
+        ...(clientConfigDir ? { clientConfigDir: resolve(cwd, clientConfigDir) } : {}),
+      }
+    }
+    if (!profiles.DEV) configurationIssues.oracle = missingByEnvironment.find(items => items.some(name => name.endsWith('_DEV'))) ?? ['ORACLE_CONNECT_STRING_DEV', 'ORACLE_USER_DEV', 'ORACLE_PASSWORD_DEV']
+  }
+
   const auditLogPath = env.MCP_AUDIT_LOG_PATH?.trim()
   return {
     requestTimeoutMs: positiveInteger(env.MCP_REQUEST_TIMEOUT_MS, 30_000),
@@ -136,6 +193,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd = process.c
     ...(auditLogPath ? { auditLogPath: resolve(cwd, auditLogPath) } : {}),
     ...(tfs ? { tfs } : {}),
     ...(wordpress ? { wordpress } : {}),
+    ...(oracle ? { oracle } : {}),
     configurationIssues,
   }
 }

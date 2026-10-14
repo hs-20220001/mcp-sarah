@@ -8,6 +8,9 @@ import { safeToolCall, successResult } from './core/tool-result.js'
 import { bugApprovalGuidance } from './modules/tfs/bug-guidance.js'
 import { TfsModule } from './modules/tfs/module.js'
 import { WordPressModule } from './modules/wordpress/module.js'
+import { OracleModule } from './modules/oracle/module.js'
+
+const oracleGuidance = 'No Oracle, realize somente consultas; se o usuário pedir alteração, informe que não é possível alterar o banco por este MCP, mas ofereça orientação de como fazer. Use DEV por padrão e selecione HOM/PRO apenas se o usuário pedir explicitamente. Uma troca de usuário mantém a senha do ambiente. ORACLE_READONLY_FUNCTIONS_<AMBIENTE> vazia permite todas as funções compatíveis que o usuário Oracle pode executar; funções podem ter efeitos colaterais mesmo em transação READ ONLY.'
 
 function registerCoreTools(server: McpServer, modules: IntegrationModule[], context: ModuleContext): void {
   const confirmationRequired = context.config.requireConfirmation
@@ -78,7 +81,7 @@ export async function createServer(dependencies: ServerDependencies = {}): Promi
   const logger = dependencies.logger ?? createLogger()
   const operations = new OperationService(config.confirmationTtlMs, logger, config.auditLogPath)
   const context: ModuleContext = { config, logger, operations }
-  const modules: IntegrationModule[] = [new TfsModule(context), new WordPressModule(context)]
+  const modules: IntegrationModule[] = [new TfsModule(context), new WordPressModule(context), new OracleModule(context)]
 
   await Promise.all(modules.map(module => module.initialize()))
 
@@ -87,7 +90,7 @@ export async function createServer(dependencies: ServerDependencies = {}): Promi
     {
       instructions: (config.requireConfirmation
         ? 'Antes de qualquer escrita, prepare a operação, mostre o diff completo ao usuário e aguarde a confirmação literal CONFIRMO. Só então chame operations_apply com o token. Nunca tente exclusão permanente nem repita automaticamente uma escrita com resultado ambíguo.'
-        : 'O modo sem confirmação literal está ativo. Antes de qualquer escrita, prepare a operação e use o diff e o preflight do plano; depois chame operations_apply com o token, sem solicitar CONFIRMO. Exceção de orientação: criação/edição de Bug e sua Task de Testes exigem aprovação conversacional da proposta antes da aplicação. Nunca tente exclusão permanente nem repita automaticamente uma escrita com resultado ambíguo.') + ` ${bugApprovalGuidance}`,
+        : 'O modo sem confirmação literal está ativo. Antes de qualquer escrita, prepare a operação e use o diff e o preflight do plano; depois chame operations_apply com o token, sem solicitar CONFIRMO. Exceção de orientação: criação/edição de Bug e sua Task de Testes exigem aprovação conversacional da proposta antes da aplicação. Nunca tente exclusão permanente nem repita automaticamente uma escrita com resultado ambíguo.') + ` ${bugApprovalGuidance} ${oracleGuidance}`,
     },
   )
 

@@ -17,7 +17,10 @@ O histórico inicial foi consolidado em **2026-10-02** a partir das [especifica�
 
 ## Não lançado
 
-Nenhuma alteração adicional registrada para a próxima versão.
+### Adicionado
+
+- Integração Oracle com perfis DEV/HOM/PRO, consultas `SELECT` parametrizadas, metadados de tabelas e funções de packages; allowlist por ambiente é opcional e vazia permite funções compatíveis; aliases TNS usam diretório configurável; não há ferramentas de escrita.
+- Modo Thick opcional para conexões Oracle cuja autenticação não é aceita pelo modo Thin, usando Oracle Instant Client configurado localmente.
 
 ## [0.1.0] - 2026-10-02
 

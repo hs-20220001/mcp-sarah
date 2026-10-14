@@ -26,3 +26,7 @@
 - `MCP_REQUIRE_CONFIRMATION` é `true` por padrão; `false` remove somente o campo literal `CONFIRMO` de `operations_apply`.
 - WordPress aceita os perfis `user` e `developer` com a mesma credencial; `WP_BASE_URL` legado representa `user`, e dois perfis exigem `wiki` explícito nas ferramentas quando ambos estão configurados.
 - WordPress oferece consulta de menus clássicos, itens e sugestão de posição: wiki developer prioriza menu Software e desenvolvimento para sistemas; wiki user usa nome do sistema para identificar menu. A inclusão de página em menu é uma segunda operação confirmável, separada da criação da página.
+- Oracle usa `oracledb` em Thin mode e perfis `ORACLE_CONNECT_STRING/USER/PASSWORD` com sufixos `_DEV`, `_HOM`, `_PRO`; ferramentas usam DEV por padrão, não fazem fallback ambiental e aceitam usuário alternativo com a senha do perfil selecionado.
+- Para aliases TNS em Thin mode, `ORACLE_TNS_ADMIN_<AMBIENTE>` aponta ao diretório contendo `tnsnames.ora` e é passado como `configDir` ao driver.
+- `ORACLE_CLIENT_LIB_DIR` ativa o modo Thick opcional com Oracle Instant Client 19+; `ORACLE_CLIENT_CONFIG_DIR` define o diretório TNS compartilhado, usando `ORACLE_TNS_ADMIN_DEV` por padrão.
+- Ferramentas Oracle somente leitura: SELECT com binds e limite de linhas, metadados de tabelas, catálogo de funções e chamada de função escalar em transação READ ONLY; allowlist por ambiente vazia permite todas as funções compatíveis e lista preenchida restringe a nomes completos; pedidos de escrita são recusados com oferta de orientação.

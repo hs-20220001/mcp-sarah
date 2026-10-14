@@ -32,7 +32,21 @@ describe('development dashboard', () => {
   it('serve orientações, status seguro e o catálogo MCP real', async () => {
     const child = spawn(process.execPath, ['--import', 'tsx', 'scripts/dev.ts'], {
       cwd: process.cwd(),
-      env: { ...environment(), MCP_DASHBOARD_PORT: '0', MCP_DASHBOARD_OPEN: 'false', WP_ALLOWED_MEDIA_ROOTS: '' },
+      env: {
+        ...environment(),
+        MCP_DASHBOARD_PORT: '0',
+        MCP_DASHBOARD_OPEN: 'false',
+        WP_ALLOWED_MEDIA_ROOTS: '',
+        ORACLE_CONNECT_STRING_DEV: '',
+        ORACLE_USER_DEV: '',
+        ORACLE_PASSWORD_DEV: '',
+        ORACLE_CONNECT_STRING_HOM: '',
+        ORACLE_USER_HOM: '',
+        ORACLE_PASSWORD_HOM: '',
+        ORACLE_CONNECT_STRING_PRO: '',
+        ORACLE_USER_PRO: '',
+        ORACLE_PASSWORD_PRO: '',
+      },
       stdio: ['pipe', 'pipe', 'pipe'],
     })
 
@@ -48,8 +62,10 @@ describe('development dashboard', () => {
         tools: Array<{ name: string }>
         status: { modules: Array<{ id: string; details?: Record<string, unknown> }> }
       }
-      expect(overview.tools).toHaveLength(32)
+      expect(overview.tools).toHaveLength(36)
       expect(overview.tools.some(tool => tool.name === 'operations_apply')).toBe(true)
+      expect(overview.tools.some(tool => tool.name === 'oracle_query')).toBe(true)
+      expect(overview.status.modules.find(module => module.id === 'oracle')).toMatchObject({ configured: false })
       expect(overview.status.modules.find(module => module.id === 'wordpress')?.details).toMatchObject({
         pageScope: 'per-wiki',
         postScope: 'per-wiki',

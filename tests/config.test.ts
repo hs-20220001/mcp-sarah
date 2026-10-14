@@ -8,8 +8,10 @@ describe('loadConfig', () => {
     expect(config.requireConfirmation).toBe(true)
     expect(config.tfs).toBeUndefined()
     expect(config.wordpress).toBeUndefined()
+    expect(config.oracle).toBeUndefined()
     expect(config.configurationIssues.tfs).toContain('AZURE_DEVOPS_PAT')
     expect(config.configurationIssues.wordpress).toContain('WP_APPLICATION_PASSWORD')
+    expect(config.configurationIssues.oracle).toContain('ORACLE_PASSWORD_DEV')
   })
 
   it('carrega cada módulo de forma independente', () => {
@@ -57,5 +59,31 @@ describe('loadConfig', () => {
     const config = loadConfig({ MCP_REQUIRE_CONFIRMATION: 'false' }, 'C:\\repo')
 
     expect(config.requireConfirmation).toBe(false)
+  })
+
+  it('carrega perfis Oracle DEV, HOM e PRO sem compartilhar usuário ou senha', () => {
+    const config = loadConfig({
+      ORACLE_CONNECT_STRING_DEV: 'dev-db/SERVICE', ORACLE_USER_DEV: 'dev_user', ORACLE_PASSWORD_DEV: 'dev_password',
+      ORACLE_TNS_ADMIN_DEV: 'C:\\oracle\\network\\admin',
+      ORACLE_CONNECT_STRING_HOM: 'hom-db/SERVICE', ORACLE_USER_HOM: 'hom_user', ORACLE_PASSWORD_HOM: 'hom_password',
+      ORACLE_CONNECT_STRING_PRO: 'pro-db/SERVICE', ORACLE_USER_PRO: 'pro_user', ORACLE_PASSWORD_PRO: 'pro_password',
+    })
+    expect(config.oracle?.profiles).toEqual({
+      DEV: { connectString: 'dev-db/SERVICE', username: 'dev_user', password: 'dev_password', tnsAdmin: 'C:\\oracle\\network\\admin', readonlyFunctions: [] },
+      HOM: { connectString: 'hom-db/SERVICE', username: 'hom_user', password: 'hom_password', readonlyFunctions: [] },
+      PRO: { connectString: 'pro-db/SERVICE', username: 'pro_user', password: 'pro_password', readonlyFunctions: [] },
+    })
+    expect(config.configurationIssues.oracle).toBeUndefined()
+  })
+
+  it('carrega os diretórios globais do Oracle Client para o modo Thick', () => {
+    const config = loadConfig({
+      ORACLE_CONNECT_STRING_DEV: 'BSBDSV', ORACLE_USER_DEV: 'app_dev', ORACLE_PASSWORD_DEV: 'secret',
+      ORACLE_CLIENT_LIB_DIR: 'C:\\oracle\\instantclient_19_17',
+      ORACLE_CLIENT_CONFIG_DIR: 'C:\\oracle\\network\\admin',
+    }, 'C:\\repo')
+
+    expect(config.oracle?.clientLibDir).toBe('C:\\oracle\\instantclient_19_17')
+    expect(config.oracle?.clientConfigDir).toBe('C:\\oracle\\network\\admin')
   })
 })

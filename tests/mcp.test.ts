@@ -34,6 +34,7 @@ describe('MCP server', () => {
       configurationIssues: {
         tfs: ['AZURE_DEVOPS_PAT'],
         wordpress: ['WP_APPLICATION_PASSWORD'],
+        oracle: ['ORACLE_PASSWORD_DEV'],
       },
     }
     const server = await createServer({ config, logger })
@@ -44,13 +45,16 @@ describe('MCP server', () => {
     await client.connect(clientTransport)
     try {
       const tools = await client.listTools()
-      expect(tools.tools).toHaveLength(32)
+      expect(tools.tools).toHaveLength(36)
       expect(tools.tools.some(tool => tool.name.startsWith('tfs_'))).toBe(true)
       expect(tools.tools.some(tool => tool.name.startsWith('wordpress_'))).toBe(true)
       expect(tools.tools.some(tool => tool.name === 'tfs_list_work_item_comments')).toBe(true)
       expect(tools.tools.some(tool => tool.name === 'tfs_prepare_create_work_item_comment')).toBe(true)
       expect(tools.tools.some(tool => tool.name === 'tfs_prepare_update_work_item_comment')).toBe(true)
       expect(tools.tools.some(tool => tool.name === 'tfs_prepare_delete_work_item_comment')).toBe(true)
+      expect(tools.tools.filter(tool => tool.name.startsWith('oracle_')).map(tool => tool.name)).toEqual([
+        'oracle_query', 'oracle_describe_table', 'oracle_list_package_functions', 'oracle_call_package_function',
+      ])
 
       const result = await client.callTool({ name: 'system_get_status', arguments: { probe: false } })
       expect(result.isError).not.toBe(true)
@@ -59,6 +63,7 @@ describe('MCP server', () => {
         modules: [
           { id: 'tfs', configured: false },
           { id: 'wordpress', configured: false },
+          { id: 'oracle', configured: false },
         ],
       })
 
@@ -93,7 +98,11 @@ describe('MCP server', () => {
     await client.connect(clientTransport)
     try {
       const tools = (await client.listTools()).tools
-      expect(tools).toHaveLength(32)
+      expect(tools).toHaveLength(36)
+      for (const tool of tools.filter(entry => entry.name.startsWith('oracle_'))) {
+        expect(tool.annotations?.readOnlyHint).toBe(true)
+        expect(tool.annotations?.destructiveHint).toBe(false)
+      }
       const createWorkItemTool = tools.find(tool => tool.name === 'tfs_prepare_create_work_item')
       const updateWorkItemTool = tools.find(tool => tool.name === 'tfs_prepare_update_work_item')
       expect(createWorkItemTool?.description).toContain('comece a descrição em HTML')
