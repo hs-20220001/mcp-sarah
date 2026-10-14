@@ -121,6 +121,63 @@ describe('Oracle configuration and read-only client', () => {
     expect(execute.mock.calls[1]?.[1]).toEqual({ owner: 'APP_DEV', tableName: 'USERS' })
   })
 
+  it('lists package functions by return metadata and associates each overload by SUBPROGRAM_ID', async () => {
+    const catalogProcedures = [
+      { FUNCTION_NAME: 'GET_STATUS', OVERLOAD: null, SUBPROGRAM_ID: 1, RETURN_TYPE: 'VARCHAR2' },
+      { FUNCTION_NAME: 'UPDATE_STATUS', OVERLOAD: null, SUBPROGRAM_ID: 4, RETURN_TYPE: null },
+      { FUNCTION_NAME: 'GET_TOTAL', OVERLOAD: '1', SUBPROGRAM_ID: 2, RETURN_TYPE: 'NUMBER' },
+      { FUNCTION_NAME: 'GET_TOTAL', OVERLOAD: '2', SUBPROGRAM_ID: 3, RETURN_TYPE: 'NUMBER' },
+    ]
+    const catalogArguments = [
+      { SUBPROGRAM_ID: 1, POSITION: 0 },
+      { SUBPROGRAM_ID: 4, POSITION: 1 },
+      { SUBPROGRAM_ID: 2, POSITION: 0 },
+      { SUBPROGRAM_ID: 3, POSITION: 0 },
+    ]
+    const functionsFromCatalog = catalogProcedures.filter(procedure =>
+      catalogArguments.some(argument => argument.SUBPROGRAM_ID === procedure.SUBPROGRAM_ID && argument.POSITION === 0),
+    )
+    const { connection, execute } = makeConnection([
+      { rows: functionsFromCatalog },
+      { rows: [
+        { ARGUMENT_NAME: null, POSITION: 0, SEQUENCE: 0, DATA_TYPE: 'VARCHAR2', IN_OUT: 'OUT' },
+        { ARGUMENT_NAME: 'P_ID', POSITION: 1, SEQUENCE: 1, DATA_TYPE: 'NUMBER', IN_OUT: 'IN', DEFAULTED: 'N' },
+      ] },
+      { rows: [
+        { ARGUMENT_NAME: null, POSITION: 0, SEQUENCE: 0, DATA_TYPE: 'NUMBER', IN_OUT: 'OUT' },
+        { ARGUMENT_NAME: 'P_ID', POSITION: 1, SEQUENCE: 1, DATA_TYPE: 'NUMBER', IN_OUT: 'IN', DEFAULTED: 'N' },
+      ] },
+      { rows: [
+        { ARGUMENT_NAME: null, POSITION: 0, SEQUENCE: 0, DATA_TYPE: 'NUMBER', IN_OUT: 'OUT' },
+        { ARGUMENT_NAME: 'P_CODE', POSITION: 1, SEQUENCE: 1, DATA_TYPE: 'VARCHAR2', IN_OUT: 'IN', DEFAULTED: 'N' },
+        { ARGUMENT_NAME: 'P_DATE', POSITION: 2, SEQUENCE: 2, DATA_TYPE: 'DATE', IN_OUT: 'IN', DEFAULTED: 'N' },
+      ] },
+    ])
+    vi.spyOn(oracledb, 'getConnection').mockResolvedValue(connection as never)
+    const config = loadConfig(fullOracleEnv).oracle
+    if (!config) throw new Error('Oracle config expected')
+
+    const result = await new OracleClient(config).listPackageFunctions('sih', 'epsolicitacaointernacao', { environment: 'DEV' })
+
+    expect(result.functions).toHaveLength(3)
+    expect(result.functions.map(fn => [fn.FUNCTION_NAME, fn.OVERLOAD, fn.RETURN_TYPE])).toEqual([
+      ['GET_STATUS', null, 'VARCHAR2'],
+      ['GET_TOTAL', '1', 'NUMBER'],
+      ['GET_TOTAL', '2', 'NUMBER'],
+    ])
+    expect((result.functions[0]?.arguments as OracleRow[]).map(arg => [arg.POSITION, arg.DATA_TYPE])).toEqual([[0, 'VARCHAR2'], [1, 'NUMBER']])
+    expect((result.functions[2]?.arguments as OracleRow[]).map(arg => [arg.POSITION, arg.ARGUMENT_NAME, arg.DATA_TYPE])).toEqual([
+      [0, null, 'NUMBER'], [1, 'P_CODE', 'VARCHAR2'], [2, 'P_DATE', 'DATE'],
+    ])
+    expect(execute.mock.calls[1]?.[0]).toContain('return_arg.POSITION = 0')
+    expect(execute.mock.calls[1]?.[0]).not.toContain('PROCEDURE_TYPE')
+    expect(execute.mock.calls.slice(2).map(call => call[1])).toEqual([
+      { owner: 'SIH', packageName: 'EPSOLICITACAOINTERNACAO', subprogramId: 1 },
+      { owner: 'SIH', packageName: 'EPSOLICITACAOINTERNACAO', subprogramId: 2 },
+      { owner: 'SIH', packageName: 'EPSOLICITACAOINTERNACAO', subprogramId: 3 },
+    ])
+  })
+
   it('invokes a unique scalar package function using named binds', async () => {
     const { connection, execute } = makeConnection([
       { rows: [{ FUNCTION_NAME: 'GET_TOTAL', OVERLOAD: null, SUBPROGRAM_ID: 1 }] },

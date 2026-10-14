@@ -94,23 +94,29 @@ export class OracleClient {
     return this.#withConnection(options, async (connection, profile) => {
       const owner = identifier(ownerInput ?? options.username ?? profile.username, 'owner')
       const result = await connection.execute(
-        `SELECT PROCEDURE_NAME AS FUNCTION_NAME, OVERLOAD, SUBPROGRAM_ID
-         FROM ALL_PROCEDURES
-         WHERE OWNER = :owner AND OBJECT_NAME = :packageName AND PROCEDURE_TYPE = 'FUNCTION'
-         ORDER BY PROCEDURE_NAME, SUBPROGRAM_ID`,
+        `SELECT p.PROCEDURE_NAME AS FUNCTION_NAME, p.OVERLOAD, p.SUBPROGRAM_ID, return_arg.DATA_TYPE AS RETURN_TYPE
+         FROM ALL_PROCEDURES p
+         JOIN ALL_ARGUMENTS return_arg
+           ON return_arg.OWNER = p.OWNER
+          AND return_arg.PACKAGE_NAME = p.OBJECT_NAME
+          AND return_arg.SUBPROGRAM_ID = p.SUBPROGRAM_ID
+          AND return_arg.POSITION = 0
+          AND return_arg.DATA_LEVEL = 0
+         WHERE p.OWNER = :owner AND p.OBJECT_NAME = :packageName AND p.PROCEDURE_NAME IS NOT NULL
+         ORDER BY p.PROCEDURE_NAME, p.SUBPROGRAM_ID`,
         { owner, packageName },
         { outFormat: oracledb.OUT_FORMAT_OBJECT, maxRows: 500 },
       ) as OracleExecutionResult
       const functions = result.rows ?? []
       if (functions.length === 0) throw new AppError('NOT_FOUND', `Package ${owner}.${packageName} não encontrado ou sem funções visíveis para este usuário.`)
       const details = await Promise.all(functions.map(async (fn) => {
-        const functionName = String(fn.FUNCTION_NAME)
+        const subprogramId = Number(fn.SUBPROGRAM_ID)
         const args = await connection.execute(
           `SELECT ARGUMENT_NAME, POSITION, SEQUENCE, DATA_TYPE, IN_OUT, DEFAULTED
            FROM ALL_ARGUMENTS
-           WHERE OWNER = :owner AND PACKAGE_NAME = :packageName AND OBJECT_NAME = :functionName AND NVL(OVERLOAD, '0') = NVL(:overload, '0') AND DATA_LEVEL = 0
+           WHERE OWNER = :owner AND PACKAGE_NAME = :packageName AND SUBPROGRAM_ID = :subprogramId AND DATA_LEVEL = 0
            ORDER BY SEQUENCE`,
-          { owner, packageName, functionName, overload: typeof fn.OVERLOAD === 'string' ? fn.OVERLOAD : null },
+          { owner, packageName, subprogramId },
           { outFormat: oracledb.OUT_FORMAT_OBJECT, maxRows: 100 },
         ) as OracleExecutionResult
         return { ...fn, arguments: args.rows ?? [] }
@@ -136,9 +142,17 @@ export class OracleClient {
     }
     return this.#withConnection(options, async connection => {
       const routines = await connection.execute(
-        `SELECT PROCEDURE_NAME AS FUNCTION_NAME, OVERLOAD, SUBPROGRAM_ID
-         FROM ALL_PROCEDURES
-         WHERE OWNER = :owner AND OBJECT_NAME = :packageName AND PROCEDURE_NAME = :functionName AND PROCEDURE_TYPE = 'FUNCTION'`,
+        `SELECT p.PROCEDURE_NAME AS FUNCTION_NAME, p.OVERLOAD, p.SUBPROGRAM_ID
+         FROM ALL_PROCEDURES p
+         WHERE p.OWNER = :owner AND p.OBJECT_NAME = :packageName AND p.PROCEDURE_NAME = :functionName
+           AND EXISTS (
+             SELECT 1 FROM ALL_ARGUMENTS return_arg
+             WHERE return_arg.OWNER = p.OWNER
+               AND return_arg.PACKAGE_NAME = p.OBJECT_NAME
+               AND return_arg.SUBPROGRAM_ID = p.SUBPROGRAM_ID
+               AND return_arg.POSITION = 0
+               AND return_arg.DATA_LEVEL = 0
+           )`,
         { owner, packageName, functionName },
         { outFormat: oracledb.OUT_FORMAT_OBJECT, maxRows: 2 },
       ) as OracleExecutionResult

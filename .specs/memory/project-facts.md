@@ -30,3 +30,4 @@
 - Para aliases TNS em Thin mode, `ORACLE_TNS_ADMIN_<AMBIENTE>` aponta ao diretório contendo `tnsnames.ora` e é passado como `configDir` ao driver.
 - `ORACLE_CLIENT_LIB_DIR` ativa o modo Thick opcional com Oracle Instant Client 19+; `ORACLE_CLIENT_CONFIG_DIR` define o diretório TNS compartilhado, usando `ORACLE_TNS_ADMIN_DEV` por padrão.
 - Ferramentas Oracle somente leitura: SELECT com binds e limite de linhas, metadados de tabelas, catálogo de funções e chamada de função escalar em transação READ ONLY; allowlist por ambiente vazia permite todas as funções compatíveis e lista preenchida restringe a nomes completos; pedidos de escrita são recusados com oferta de orientação.
+- Oracle identifica funções de package pela linha de retorno `ALL_ARGUMENTS.POSITION = 0` e associa os argumentos por owner, package e `SUBPROGRAM_ID`, preservando metadados de sobrecargas.

@@ -17,6 +17,10 @@ O histórico inicial foi consolidado em **2026-10-02** a partir das [especifica�
 
 ## Não lançado
 
+### Corrigido
+
+- (2026-10-14) Corrigida a descoberta de funções Oracle: o catálogo identifica funções pela posição de retorno em `ALL_ARGUMENTS` e associa corretamente argumentos e sobrecargas por `SUBPROGRAM_ID`, sem incluir procedures.
+
 ### Adicionado
 
 - Integração Oracle com perfis DEV/HOM/PRO, consultas `SELECT` parametrizadas, metadados de tabelas e funções de packages; allowlist por ambiente é opcional e vazia permite funções compatíveis; aliases TNS usam diretório configurável; não há ferramentas de escrita.
