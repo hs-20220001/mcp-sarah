@@ -67,14 +67,14 @@ if (Test-Path -LiteralPath $skillsRoot) {
 $gitignore = Get-Content -Raw -LiteralPath (Join-Path $projectRoot '.gitignore')
 if ($gitignore -notmatch '(?m)^\.env$') { $errors.Add('.gitignore precisa ignorar .env.') }
 
-$secretPattern = '(?i)(AZURE_DEVOPS_PAT|WP_APPLICATION_PASSWORD)\s*=\s*[^\s<]+$'
+$secretPattern = '(?i)(AZURE_DEVOPS_PAT|WP_APPLICATION_PASSWORD|KANBOARD_API_KEY)\s*=\s*[^\s<]+$'
 $excludedDirectories = @('node_modules', 'dist', 'coverage', '.git', '.local')
 $scanFiles = @(
   Get-ChildItem -LiteralPath $projectRoot -File
   Get-ChildItem -LiteralPath $projectRoot -Directory |
     Where-Object { $_.Name -notin $excludedDirectories } |
     ForEach-Object { Get-ChildItem -LiteralPath $_.FullName -Recurse -File }
-) | Where-Object { $_.Name -notlike '.env*' -and $_.FullName -ne $PSCommandPath }
+) | Where-Object { ($_.Name -notlike '.env*' -or $_.Name -eq '.env.example') -and $_.FullName -ne $PSCommandPath }
 foreach ($file in $scanFiles) {
   $matches = Select-String -LiteralPath $file.FullName -Pattern $secretPattern -ErrorAction SilentlyContinue
   if ($matches) { $errors.Add("Possível segredo versionado em $($file.FullName.Substring($projectRoot.Length + 1)).") }

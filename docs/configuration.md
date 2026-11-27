@@ -56,6 +56,19 @@ Se a autenticação retornar `NJS-116` (verificador de senha incompatível com T
 
 `oracle_query` só aceita uma instrução `SELECT` (sem `WITH` ou `FOR UPDATE`), binds escalares nomeados e até 500 linhas. `oracle_describe_table` consulta colunas e metadados disponíveis; `oracle_list_package_functions` lista funções e assinaturas visíveis; `oracle_call_package_function` chama função escalar com argumentos IN suportados. Se `ORACLE_READONLY_FUNCTIONS_<AMBIENTE>` estiver vazia, qualquer função compatível e executável pelo usuário Oracle poderá ser chamada; se preenchida, somente as assinaturas listadas são aceitas. Todas as chamadas iniciam uma transação Oracle `READ ONLY`, sem APIs MCP de escrita. Se o usuário pedir alteração, o agente deve informar que não é possível alterar por este MCP e oferecer orientação.
 
+## Kanboard
+
+| Variável | Obrigatória | Descrição |
+| --- | --- | --- |
+| `KANBOARD_API_URL` | Sim | Endpoint HTTPS completo, por exemplo `https://kanboard.exemplo.org/kanboard/jsonrpc.php`. Não inclua credenciais, query ou fragmento. |
+| `KANBOARD_ALLOWED_HTTP_URL` | Não | Exceção para instalação sem TLS: repita literalmente a URL HTTP completa de `KANBOARD_API_URL`, inclusive porta e caminho. Vazia, diferente ou `true` não libera HTTP. Remova a exceção ao migrar para HTTPS. |
+| `KANBOARD_API_KEY` | Sim | Chave da API da aplicação (nas configurações do Kanboard) ou token pessoal. Preencher somente no ambiente local. |
+| `KANBOARD_USERNAME` | Não | Padrão `jsonrpc`: a chave global nunca escreve pelo MCP. Para token pessoal, informe o login exato do titular; a API precisa confirmar essa identidade em `getMe`. |
+
+O relatório usa a integração TFS do projeto configurado. Se o TFS estiver ausente ou inacessível, os dados disponíveis do Kanboard permanecem no resultado e a cobertura indica a falha. O status local informa o modo do Kanboard sem imprimir a chave. Com conta pessoal, comentários e edições dependem das permissões do titular e de aprovação específica do solicitante; o nome de quem escreve não é escolhido na chamada.
+
+Após preencher as variáveis, reinicie o servidor MCP. Para verificar apenas o Kanboard, peça para listar os projetos. A consulta de status sem `probe` não acessa a rede; com `probe: true`, testa todas as integrações configuradas e chama `getVersion` no Kanboard. Referências: [autenticação](https://docs.kanboard.org/v1/api/authentication/) e [manual do usuário](https://docs.kanboard.org/v1/user/index).
+
 ## Políticas
 
 O perfil TFS autoriza tipos e hierarquia, mapeia o campo de descrição e converte aliases amigáveis de `customFields` para reference names. O perfil Sarah inclui `priority`, `effort`, `businessValue` e os seis aliases Planning (`size`, `complexity`, `uncertainty`, `strategicImpact`, `tangibility`, `urgency`); opções declaradas na política são validadas antes de preparar a escrita. Acceptance Criteria usa o campo padrão `Microsoft.VSTS.Common.AcceptanceCriteria`. Para Tasks, `activity` enumera as sete opções exibidas pelo projeto, `remainingWork` aceita número e `blocked` aceita boolean; esses aliases só podem ser escritos em `Task`. A disponibilidade efetiva depende do processo TFS remoto.

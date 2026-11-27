@@ -122,13 +122,38 @@ export class TfsClient {
     return (result.workItems ?? []).map(item => item.id).slice(0, filters.maxItems)
   }
 
+  async findKanboardCandidates(taskIds: number[], linkedIds: number[]) {
+    if (!taskIds.length || taskIds.length > 10 || linkedIds.length > 100 || ![...taskIds, ...linkedIds].every(n => Number.isSafeInteger(n) && n > 0)) {
+      throw new AppError('POLICY_DENIED', 'Lote de referências Kanboard inválido.')
+    }
+    const clauses = taskIds.flatMap(id => [
+      `[System.Tags] CONTAINS 'kid:${id}'`,
+      ...['System.Description', 'Microsoft.VSTS.TCM.ReproSteps', 'Microsoft.VSTS.Common.AcceptanceCriteria'].flatMap(field =>
+        [`[${field}] CONTAINS 'task_id=${id}'`, `[${field}] CONTAINS '/task/${id}'`]),
+    ])
+    if (linkedIds.length) clauses.push(`[System.Id] IN (${linkedIds.join(',')})`)
+    const query = `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = '${escapeWiql(this.config.project)}' AND (${clauses.join(' OR ')}) ORDER BY [System.Id]`
+    const result = await this.#request<{ workItems: { id: number }[] }>('/wit/wiql?$top=201', {
+      method: 'POST', redirect: 'error', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }),
+    })
+    const ids = result.workItems.slice(0, 200).map(w => w.id)
+    const items = (await this.#rawItems(ids)).map(raw => ({ ...this.normalize(raw),
+      description: fieldText(raw.fields, 'System.Description'), reproSteps: fieldText(raw.fields, 'Microsoft.VSTS.TCM.ReproSteps'),
+      stateChangedDate: nullableText(raw.fields['Microsoft.VSTS.Common.StateChangeDate']) }))
+    return { items, limited: result.workItems.length > 200 || items.length < ids.length }
+  }
+
   async getWorkItems(ids: number[]): Promise<TfsWorkItem[]> {
-    const items: TfsWorkItem[] = []
+    return (await this.#rawItems(ids)).map(item => this.normalize(item))
+  }
+
+  async #rawItems(ids: number[]) {
+    const items: TfsRawWorkItem[] = []
     for (let offset = 0; offset < ids.length; offset += 200) {
       const batch = ids.slice(offset, offset + 200)
       if (batch.length === 0) continue
-      const result = await this.#request<{ value: TfsRawWorkItem[] }>(`/wit/workitems?ids=${batch.join(',')}&$expand=relations`)
-      items.push(...result.value.map(item => this.normalize(item)))
+      const result = await this.#request<{ value: TfsRawWorkItem[] }>(`/wit/workitems?ids=${batch.join(',')}&$expand=relations`, { redirect: 'error' })
+      items.push(...result.value)
     }
     return items
   }

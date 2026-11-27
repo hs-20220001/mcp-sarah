@@ -9,6 +9,8 @@ describe('loadConfig', () => {
     expect(config.tfs).toBeUndefined()
     expect(config.wordpress).toBeUndefined()
     expect(config.oracle).toBeUndefined()
+    expect(config.kanboard).toBeUndefined()
+    expect(config.configurationIssues.kanboard).toEqual(['KANBOARD_API_URL', 'KANBOARD_API_KEY'])
     expect(config.configurationIssues.tfs).toContain('AZURE_DEVOPS_PAT')
     expect(config.configurationIssues.wordpress).toContain('WP_APPLICATION_PASSWORD')
     expect(config.configurationIssues.oracle).toContain('ORACLE_PASSWORD_DEV')
@@ -24,6 +26,35 @@ describe('loadConfig', () => {
     expect(config.tfs?.organizationUrl).toBe('https://tfs.example/tfs/DefaultCollection')
     expect(config.tfs?.apiVersion).toBe('7.0')
     expect(config.configurationIssues.wordpress).toContain('WP_APPLICATION_PASSWORD')
+  })
+
+  it('configura o Kanboard isoladamente e distingue chave de aplicação de token pessoal', () => {
+    const env = { KANBOARD_API_URL: 'https://kb.example/kanboard/jsonrpc.php', KANBOARD_API_KEY: 'teste' }
+    expect(loadConfig(env).kanboard).toEqual({ apiUrl: env.KANBOARD_API_URL, apiKey: 'teste', username: 'jsonrpc' })
+    expect(loadConfig({ ...env, KANBOARD_USERNAME: 'leitor' }).kanboard?.username).toBe('leitor')
+    expect(loadConfig({ ...env, KANBOARD_API_KEY: ' ' }).configurationIssues.kanboard).toEqual(['KANBOARD_API_KEY'])
+  })
+
+  it('só libera HTTP quando a exceção corresponde a todo o endpoint Kanboard', () => {
+    const endpoint = 'http://kb.example:8181/kanboard/jsonrpc.php'
+    const env = { KANBOARD_API_URL: endpoint, KANBOARD_API_KEY: 'teste' }
+    expect(loadConfig({ ...env, KANBOARD_ALLOWED_HTTP_URL: endpoint }).kanboard?.apiUrl).toBe(endpoint)
+    for (const allowed of ['', 'true', '*', endpoint.replace('8181', '8080'), endpoint.replace('kb.example', 'outro.example'), endpoint.replace('/kanboard', '/outro')]) {
+      const config = loadConfig({ ...env, KANBOARD_ALLOWED_HTTP_URL: allowed })
+      expect(config.kanboard).toBeUndefined()
+      expect(config.configurationIssues.kanboard?.join()).toContain('KANBOARD_ALLOWED_HTTP_URL')
+    }
+  })
+
+  it.each(['ftp://kb.example/jsonrpc.php', 'http://user:senha@kb.example/jsonrpc.php', 'http://kb.example/jsonrpc.php?key=segredo', 'http://kb.example/jsonrpc.php#frag', 'http://kb.example/'])('a exceção não libera um endpoint inválido: %s', endpoint => {
+    expect(loadConfig({ KANBOARD_API_URL: endpoint, KANBOARD_ALLOWED_HTTP_URL: endpoint, KANBOARD_API_KEY: 'teste' }).kanboard).toBeUndefined()
+  })
+
+  it.each(['invalida', 'http://kb.example/jsonrpc.php', 'https://user:segredo@kb.example/jsonrpc.php', 'https://kb.example/jsonrpc.php?key=segredo', 'https://kb.example/'])('recusa endpoint inválido sem ecoar seu valor: %s', apiUrl => {
+    const config = loadConfig({ KANBOARD_API_URL: apiUrl, KANBOARD_API_KEY: 'teste' })
+    expect(config.kanboard).toBeUndefined()
+    expect(config.configurationIssues.kanboard?.join()).toContain('KANBOARD_API_URL')
+    expect(config.configurationIssues.kanboard?.join()).not.toContain(apiUrl)
   })
 
   it('bloqueia credenciais WordPress fora de HTTPS', () => {

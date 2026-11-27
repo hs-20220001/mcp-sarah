@@ -107,7 +107,7 @@
     <section class="section">
       <div class="section-head"><div><h2>Como usar, passo a passo</h2><p>O caminho recomendado para quem está começando.</p></div></div>
       <div class="steps">
-        <article class="step"><strong>Deixe as credenciais no <code>.env</code></strong><p>O PAT do TFS e a Application Password do WordPress ficam somente neste computador.</p></article>
+        <article class="step"><strong>Deixe as credenciais no <code>.env</code></strong><p>As credenciais de cada integração ficam somente neste computador. Não compartilhe esse arquivo.</p></article>
         <article class="step"><strong>Use <code>npm run dev</code> para orientação</strong><p>Este painel abre e o processo fica ativo até você pressionar <code>Ctrl+C</code>. Ele não conecta sozinho uma IA.</p></article>
         <article class="step"><strong>Compile com <code>npm run build</code></strong><p>Isso cria a versão estável em <code>dist/index.js</code>, usada pelo Codex ou outro cliente MCP.</p></article>
         <article class="step"><strong>Configure o cliente MCP</strong><p>Copie o exemplo de <code>.codex/config.toml.example</code> para a configuração do Codex e reinicie o aplicativo.</p></article>
@@ -131,7 +131,8 @@
     let overview = null;
     const byId = id => document.getElementById(id);
     const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[character]);
-    const groupName = name => name.startsWith('tfs_') ? 'TFS / Azure DevOps' : name.startsWith('wordpress_') ? 'WordPress' : 'Núcleo e confirmação';
+    const moduleNames = { tfs: 'TFS / Azure DevOps', wordpress: 'WordPress', oracle: 'Oracle', kanboard: 'Kanboard' };
+    const groupName = name => moduleNames[name.split('_')[0]] || 'Núcleo e confirmação';
     const toolKind = tool => tool.annotations?.readOnlyHint ? 'Leitura' : tool.name.includes('_prepare_') ? 'Preparação segura' : tool.name === 'operations_apply' ? 'Aplicação confirmada' : tool.annotations?.destructiveHint ? 'Lixeira' : 'Operação local';
 
     function statusBadge(module) {
@@ -148,7 +149,7 @@
         const facts = module.id === 'wordpress'
           ? [`Páginas: ${details.pageScope === 'all' ? 'todas' : 'restritas'}`, `Posts: ${details.postScope === 'all' ? 'todos' : 'restritos'}`, `Mídia local: ${details.mediaPathScope === 'all' ? 'qualquer caminho' : 'restrita'}`]
           : details.allowedWorkItemTypes ? [`Perfil: ${details.profile}`, `${details.allowedWorkItemTypes.length} tipos de work item`] : [];
-        return `<article class="panel"><div class="panel-top"><h3>${module.id === 'tfs' ? 'TFS / Azure DevOps' : 'WordPress'}</h3><span class="badge ${style}">${label}</span></div><p class="module-message">${escapeHtml(module.message)}</p><div class="facts">${facts.map(fact => `<span class="fact">${escapeHtml(fact)}</span>`).join('')}</div></article>`;
+        return `<article class="panel"><div class="panel-top"><h3>${escapeHtml(moduleNames[module.id] || module.id)}</h3><span class="badge ${style}">${label}</span></div><p class="module-message">${escapeHtml(module.message)}</p><div class="facts">${facts.map(fact => `<span class="fact">${escapeHtml(fact)}</span>`).join('')}</div></article>`;
       }).join('');
       const wordpress = modules.find(module => module.id === 'wordpress');
       const details = wordpress?.details || {};
@@ -159,7 +160,7 @@
     function renderTools() {
       const query = byId('search').value.trim().toLocaleLowerCase('pt-BR');
       const tools = (overview?.tools || []).filter(tool => `${tool.name} ${tool.title || ''} ${tool.description || ''}`.toLocaleLowerCase('pt-BR').includes(query));
-      const groups = ['Núcleo e confirmação','TFS / Azure DevOps','WordPress'];
+      const groups = ['Núcleo e confirmação', ...Object.values(moduleNames)];
       const html = groups.map(group => {
         const entries = tools.filter(tool => groupName(tool.name) === group);
         if (entries.length === 0) return '';

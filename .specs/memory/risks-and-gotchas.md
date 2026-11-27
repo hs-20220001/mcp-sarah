@@ -2,6 +2,10 @@
 
 - Não registrar objetos de erro HTTP sem redação; eles podem conter cabeçalhos e corpos sensíveis.
 - O PAT TFS e a Application Password WordPress devem existir somente no ambiente local.
+- Chave global do Kanboard não restringe projetos: prefira token pessoal com permissões mínimas. Respostas de projetos podem incluir `token`; usar projeção explícita. A paginação MCP não limita o volume recebido do Kanboard.
+- `getMe` também retorna campos privados: projetar somente ID/login/nome. O preflight Kanboard não é uma revisão atômica; escrita sem resposta não deve ser repetida. A confirmação humana depende do host; o núcleo confere que autor, alvo e conteúdo correspondem ao plano.
+- Comentário pode citar o Bug de outro cartão. URL de referência, tag de integração e similaridade de título não são equivalentes; `Removed` não é entrega, e a última alteração pode não ser mudança de estado.
+- `KANBOARD_ALLOWED_HTTP_URL` precisa coincidir com o endpoint HTTP completo. A exceção não cifra nem autentica o servidor; não enviar credenciais reais para testar essa configuração.
 - IDs e nomes de campos customizados variam entre processos TFS; somente aliases permitidos podem ser escritos.
 - Quebras de linha simples e listas digitadas em texto/Markdown podem ficar concatenadas nos campos HTML do TFS. Orientar tags de bloco e listas reais; testes simulados provam preservação do payload, não a aparência/sanitização da instalação remota.
 - A política local não confirma disponibilidade, permissões ou allowed values remotos de campos TFS; `Personas affected` e `Mapped on SpecMap` continuam sem aliases porque seus reference names não foram verificados.

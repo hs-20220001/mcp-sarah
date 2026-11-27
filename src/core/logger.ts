@@ -1,4 +1,4 @@
-const sensitiveKeyPattern = /(authorization|password|token|pat|secret|credential)/i
+const sensitiveKeyPattern = /(authorization|password|token|pat|secret|credential|api[_-]?key)/i
 
 function redact(value: unknown, seen = new WeakSet()): unknown {
   if (value === null || typeof value !== 'object') return value

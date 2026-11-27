@@ -95,6 +95,10 @@ export class TfsModule implements IntegrationModule {
     this.#client = new TfsClient(config, this.#policy, new HttpClient({ timeoutMs: this.context.config.requestTimeoutMs }))
   }
 
+  findKanboardCandidates(taskIds: number[], linkedIds: number[]) {
+    return this.#requireClient().findKanboardCandidates(taskIds, linkedIds)
+  }
+
   async healthCheck(probe: boolean): Promise<ModuleHealth> {
     if (!this.#client) {
       return { id: 'tfs', configured: false, message: `Configuração ausente: ${(this.context.config.configurationIssues.tfs ?? []).join(', ')}` }

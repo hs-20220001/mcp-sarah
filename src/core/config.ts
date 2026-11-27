@@ -3,7 +3,13 @@ import { delimiter, resolve } from 'node:path'
 
 loadDotEnv({ quiet: true })
 
-export type ModuleId = 'tfs' | 'wordpress' | 'oracle'
+export type ModuleId = 'tfs' | 'wordpress' | 'oracle' | 'kanboard'
+
+export interface KanboardConfig {
+  apiUrl: string
+  apiKey: string
+  username: string
+}
 
 export const oracleEnvironments = ['DEV', 'HOM', 'PRO'] as const
 export type OracleEnvironment = (typeof oracleEnvironments)[number]
@@ -59,6 +65,7 @@ export interface AppConfig {
   tfs?: TfsConfig
   wordpress?: WordPressConfig
   oracle?: OracleConfig
+  kanboard?: KanboardConfig
   configurationIssues: Partial<Record<ModuleId, string[]>>
 }
 
@@ -83,6 +90,24 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd = process.c
   let tfs: TfsConfig | undefined
   let wordpress: WordPressConfig | undefined
   let oracle: OracleConfig | undefined
+  let kanboard: KanboardConfig | undefined
+
+  {
+    const apiUrl = env.KANBOARD_API_URL?.trim()
+    const apiKey = env.KANBOARD_API_KEY?.trim()
+    const missing = requiredValues({ KANBOARD_API_URL: apiUrl, KANBOARD_API_KEY: apiKey })
+    if (!apiUrl || !apiKey) configurationIssues.kanboard = missing
+    else {
+      const url = URL.canParse(apiUrl) ? new URL(apiUrl) : undefined
+      if (!url || !['http:', 'https:'].includes(url.protocol) || url.username || url.password || /[?#]/.test(apiUrl) || !url.pathname.endsWith('/jsonrpc.php')) {
+        configurationIssues.kanboard = ['KANBOARD_API_URL deve ser um endpoint terminado em /jsonrpc.php, sem credenciais, query ou fragmento; prefira HTTPS']
+      } else if (url.protocol === 'http:' && apiUrl !== env.KANBOARD_ALLOWED_HTTP_URL?.trim()) {
+        configurationIssues.kanboard = ['KANBOARD_API_URL usa HTTP sem criptografia; use HTTPS ou autorize a URL exata em KANBOARD_ALLOWED_HTTP_URL']
+      } else {
+        kanboard = { apiUrl: url.href, apiKey, username: env.KANBOARD_USERNAME?.trim() || 'jsonrpc' }
+      }
+    }
+  }
 
   {
     const organizationUrl = env.AZURE_DEVOPS_ORG_URL
@@ -194,6 +219,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, cwd = process.c
     ...(tfs ? { tfs } : {}),
     ...(wordpress ? { wordpress } : {}),
     ...(oracle ? { oracle } : {}),
+    ...(kanboard ? { kanboard } : {}),
     configurationIssues,
   }
 }

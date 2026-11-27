@@ -1,6 +1,6 @@
 # MCP Sarah
 
-Servidor MCP local e modular para oferecer a agentes de IA acesso controlado a ferramentas internas. Integra Azure DevOps Server/TFS, WordPress e Oracle sem depender de um provedor de IA específico.
+Servidor MCP local e modular para oferecer a agentes de IA acesso controlado a ferramentas internas. Integra Azure DevOps Server/TFS, WordPress, Oracle e Kanboard sem depender de um provedor de IA específico.
 
 ## Características
 
@@ -46,6 +46,14 @@ Para uma única wiki, `WP_BASE_URL` continua disponível e representa a wiki pú
 ### Oracle
 
 Configure `ORACLE_CONNECT_STRING_DEV`, `ORACLE_USER_DEV` e `ORACLE_PASSWORD_DEV`; os equivalentes `_HOM` e `_PRO` configuram homologação e produção. O MCP usa sempre DEV como padrão e só acessa HOM/PRO quando isso for pedido. Para aliases TNS, configure `ORACLE_TNS_ADMIN_<AMBIENTE>` para o diretório que contém `tnsnames.ora`. As ferramentas só consultam: executam `SELECT`, descrevem tabelas e consultam funções de packages. `ORACLE_READONLY_FUNCTIONS_<AMBIENTE>` vazia permite qualquer função compatível que o usuário Oracle possa executar; preenchida, restringe às funções listadas por nome completo `OWNER.PACKAGE.FUNCTION`. Como funções podem ter efeitos próprios mesmo em `READ ONLY`, limite as permissões do usuário Oracle e use uma lista restritiva quando apropriado. Um usuário alternativo pode ser informado por chamada e usará a senha do ambiente configurado.
+
+### Kanboard
+
+Defina `KANBOARD_API_URL` e `KANBOARD_API_KEY` localmente e reinicie o MCP. **`KANBOARD_USERNAME=jsonrpc` é somente leitura.** Peça, por exemplo: “Compare os chamados desta coluna com os Bugs e PBIs do TFS e indique onde houve atividade mais recente”. O relatório mostra referências nos dois sentidos e não altera os sistemas.
+
+Com token pessoal e login do titular, também é possível comentar ou editar título/descrição. O agente deve mostrar nome e login autenticados, tarefa e conteúdo exato, e aguardar aprovação para aquela escrita, mesmo sem confirmação literal global. Veja a [configuração](docs/configuration.md#kanboard) e o [catálogo](docs/tools.md#kanboard).
+
+Se a instalação só oferece HTTP e você aceita o risco de transmitir a chave sem criptografia, repita a URL exata em `KANBOARD_ALLOWED_HTTP_URL`. Não existe fallback automático de HTTPS para HTTP.
 
 ## Começando sem experiência técnica
 

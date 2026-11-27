@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { appendFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 import { AppError, normalizeError } from './errors.js'
 import type { Logger } from './logger.js'
 
@@ -18,8 +19,16 @@ export interface PrepareOperationInput {
   target: string
   summary: string
   diff: OperationDiff[]
+  requiredApproval?: WriteApproval
   preflight: () => Promise<void>
   execute: () => Promise<Record<string, unknown>>
+}
+
+export interface WriteApproval {
+  username: string
+  taskId: number
+  field: 'comment' | 'title' | 'description'
+  value: string
 }
 
 interface StoredOperation extends PrepareOperationInput {
@@ -95,11 +104,14 @@ export class OperationService {
     return this.#public(operation)
   }
 
-  async apply(id: string, token: string): Promise<PublicOperation> {
+  async apply(id: string, token: string, approval?: WriteApproval): Promise<PublicOperation> {
     const operation = this.#getPending(id)
     const suppliedHash = tokenHash(token)
     if (!timingSafeEqual(operation.tokenHash, suppliedHash)) {
       throw new AppError('FORBIDDEN', 'Token de confirmação inválido.')
+    }
+    if (operation.module === 'kanboard' && (!operation.requiredApproval || !isDeepStrictEqual(operation.requiredApproval, approval))) {
+      throw new AppError('POLICY_DENIED', 'Confirme com o solicitante o login pessoal, a tarefa, o campo e o conteúdo exato do plano Kanboard antes de aplicar.')
     }
 
     operation.state = 'applying'

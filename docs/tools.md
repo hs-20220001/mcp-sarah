@@ -42,6 +42,22 @@ Na criação de Bug, o MCP orienta pesquisar o prefixo real do sistema, áreas/i
 - `wordpress_prepare_update_media`: prepara metadados.
 - `wordpress_prepare_trash_media`: usa lixeira ou falha sem fallback permanente.
 
+## Kanboard
+
+- `kanboard_list_projects`: lista projetos. Com chave da aplicação, usa `getAllProjects`; com token pessoal, `getMyProjects`.
+- `kanboard_list_tasks`: lista tarefas de `projectId`, com filtro opcional `columnId` antes da paginação. O padrão `status: open` retorna as abertas; use `closed` para as fechadas.
+- `kanboard_get_task`: consulta uma tarefa por `taskId`, incluindo descrição e link.
+
+- `kanboard_list_task_comments`: comentários visíveis de uma tarefa, por ID decrescente, com datas e paginação.
+- `kanboard_report_tasks`: cruza até 10 IDs de tarefas por chamada com o projeto TFS configurado, em qualquer estado. Para uma coluna inteira, percorra a lista até `nextOffset: null` e divida os IDs em lotes. Retorna estado do cartão, coluna, datas, quantidade de comentários e itens TFS com tipo, estado, datas, links e evidências. `latestActivitySide` compara datas, não mede progresso nem prova esquecimento; `stateChangedDate` é a mudança de estado quando o TFS a informa.
+- `kanboard_prepare_task_write` (somente conta pessoal): `taskId`, `field` (`comment`, `title` ou `description`) e `value`. Cada plano tem uma única alteração. O diff identifica o ator autenticado, o alvo e o conteúdo. Exiba-os e aguarde aprovação explícita do solicitante. Só então envie esses mesmos três valores e o `username` autenticado em `kanboardApproval` ao aplicar. Não há argumento para trocar o autor ou a credencial.
+
+**Como interpretar o relatório:** `integration_tag` identifica `kid:<ID>` exata. `url_reference` é uma referência por link, não necessariamente a origem do item. `other_task_reference` indica item marcado para outro chamado: não atribua seu desfecho ao cartão consultado. A busca considera links TFS na descrição/comentários do cartão e links Kanboard na descrição, reprodução ou aceite no TFS. Não relaciona números soltos, títulos parecidos ou anexos. Preserve todos os itens e separe Bugs/PBIs de Tasks/Features. Para explicar o andamento além das datas, confira comentários nos dois lados e Tasks filhas pertinentes. Aponte tanto cartão aberto com TFS concluído/removido quanto cartão fechado com TFS ainda aberto; nenhum desses casos autoriza sincronização automática.
+
+`not_found` significa que não se encontrou vínculo nas fontes verificadas, não que ele inexiste. `partial`, `unavailableTasks`, `unresolvedIds`, `limited` ou `tfs_unavailable` devem ser informados; não os contabilize como ausência. Limites por lote: 100 IDs extraídos de links e 200 candidatos TFS; se houver truncamento, repita a consulta com menos cartões. O resumo não devolve corpos de comentários ou descrições.
+
+As listas paginadas retornam `items`, `total` e `nextOffset` (nulo na última página). `limit` é 25 por padrão, até 50. A API fornece a lista completa; o MCP consulta novamente e recorta a página a cada chamada. Não há snapshot Kanboard.
+
 ## Oracle
 
 Todas as ferramentas Oracle escolhem `DEV` por padrão. Use `HOM` ou `PRO` somente quando o usuário pedir esse ambiente; não alterne silenciosamente. Um campo `username` opcional tenta a conexão com outro usuário e a senha já configurada para aquele ambiente. Aliases TNS exigem `ORACLE_TNS_ADMIN_<AMBIENTE>` apontando ao diretório com `tnsnames.ora` em Thin mode; em Thick mode, usam o diretório TNS compartilhado configurado para o processo. Se pedirem uma alteração no banco, informe que o MCP não pode realizá-la e ofereça orientação.

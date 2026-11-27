@@ -35,6 +35,7 @@ describe('MCP server', () => {
         tfs: ['AZURE_DEVOPS_PAT'],
         wordpress: ['WP_APPLICATION_PASSWORD'],
         oracle: ['ORACLE_PASSWORD_DEV'],
+        kanboard: ['KANBOARD_API_KEY'],
       },
     }
     const server = await createServer({ config, logger })
@@ -45,7 +46,10 @@ describe('MCP server', () => {
     await client.connect(clientTransport)
     try {
       const tools = await client.listTools()
-      expect(tools.tools).toHaveLength(36)
+      expect(tools.tools).toHaveLength(41)
+      expect(tools.tools.filter(tool => tool.name.startsWith('kanboard_')).map(tool => tool.name)).toEqual([
+        'kanboard_list_projects', 'kanboard_list_tasks', 'kanboard_get_task', 'kanboard_list_task_comments', 'kanboard_report_tasks',
+      ])
       expect(tools.tools.some(tool => tool.name.startsWith('tfs_'))).toBe(true)
       expect(tools.tools.some(tool => tool.name.startsWith('wordpress_'))).toBe(true)
       expect(tools.tools.some(tool => tool.name === 'tfs_list_work_item_comments')).toBe(true)
@@ -64,6 +68,7 @@ describe('MCP server', () => {
           { id: 'tfs', configured: false },
           { id: 'wordpress', configured: false },
           { id: 'oracle', configured: false },
+          { id: 'kanboard', configured: false },
         ],
       })
 
@@ -76,6 +81,9 @@ describe('MCP server', () => {
       const unavailable = await client.callTool({ name: 'tfs_get_work_item', arguments: { id: 1 } })
       expect(unavailable.isError).toBe(true)
       expect(unavailable.structuredContent).toMatchObject({ error: { code: 'CONFIG_MISSING' } })
+      const missingKey = await client.callTool({ name: 'kanboard_list_projects', arguments: {} })
+      expect(missingKey.structuredContent).toMatchObject({ error: { code: 'CONFIG_MISSING' } })
+      expect(missingKey.structuredContent).toHaveProperty('error.message', expect.stringContaining('KANBOARD_API_KEY'))
     } finally {
       await client.close()
       await server.close()
@@ -98,8 +106,8 @@ describe('MCP server', () => {
     await client.connect(clientTransport)
     try {
       const tools = (await client.listTools()).tools
-      expect(tools).toHaveLength(36)
-      for (const tool of tools.filter(entry => entry.name.startsWith('oracle_'))) {
+      expect(tools).toHaveLength(41)
+      for (const tool of tools.filter(entry => /^(oracle|kanboard)_/.test(entry.name))) {
         expect(tool.annotations?.readOnlyHint).toBe(true)
         expect(tool.annotations?.destructiveHint).toBe(false)
       }

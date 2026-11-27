@@ -1,9 +1,9 @@
 ---
-change: changes/oracle-readonly.md
+change: changes/kanboard-followup.md
 status: concluded
-updated: 2026-10-14
+updated: 2026-11-27
 ---
 
 # Mudança ativa
 
-Adicionar integração Oracle somente leitura, com perfis DEV/HOM/PRO, consultas parametrizadas, descrição de tabelas e descoberta/execução de funções de packages sob transação Oracle READ ONLY.
+Cruzar o andamento Kanboard/TFS e proteger as escritas pessoais no Kanboard.

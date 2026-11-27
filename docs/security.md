@@ -11,9 +11,10 @@
 ## Escritas
 
 - Por padrão, toda escrita exige plano, diff, token curto e `CONFIRMO`. Com `MCP_REQUIRE_CONFIRMATION=false`, somente a confirmação humana literal é dispensada: o plano, o token, o preflight, a escrita única e a auditoria continuam obrigatórios.
-- Use essa opção somente em ambiente local confiável, porque qualquer plano preparado poderá ser aplicado sem uma pausa para revisão humana.
+- Use essa opção somente em ambiente local confiável. Na ausência de uma política específica do módulo, o token permite aplicar o plano sem nova pausa humana.
 - Essa variável não altera uma aprovação adicional feita pelo host MCP, como `default_tools_approval_mode`.
-- Criação/edição de Bug e sua Task de Testes orientam o agente a aguardar aprovação conversacional da proposta mesmo com `MCP_REQUIRE_CONFIRMATION=false`, sem exigir a palavra literal `CONFIRMO`. Essa orientação não constitui uma nova trava técnica: o servidor não verifica a fala do usuário e um plano ainda pode ser aplicado pelo chamador com token válido. Demais fluxos mantêm o modo global configurado.
+- Criação/edição de Bug e sua Task de Testes orientam o agente a aguardar aprovação conversacional da proposta mesmo com `MCP_REQUIRE_CONFIRMATION=false`, sem exigir a palavra literal `CONFIRMO`. Para esses itens do TFS a aprovação conversacional não constitui uma nova trava técnica.
+- No Kanboard pessoal o host deve mostrar o nome (quando disponível), login, alvo, ação e texto exato e aguardar autorização explícita. Além do token, a aplicação exige que `kanboardApproval` corresponda ao login, tarefa, campo e valor guardados no plano. O servidor pode verificar esses valores e a identidade via `getMe`, não a fala humana; mantenha a aprovação de escritas no host. O preflight relê a tarefa, mas a API Kanboard não oferece comparação atômica de revisão na escrita. Não repetir uma escrita de resultado ambíguo.
 - A aplicação relê o recurso e bloqueia conflitos.
 - Escritas não recebem retry automático.
 - TFS usa somente recycle bin; WordPress usa somente `force=false`.
@@ -21,6 +22,8 @@
 
 ## Escopo
 
+- Kanboard: `jsonrpc` tem acesso global fora do MCP; **no MCP só pode ler**. Para conta pessoal a única preparação aceita adicionar um comentário ou editar título/descrição. Não há RPC genérico, sincronização, fechamento, exclusão nem atribuição. O login é verificado no preparo e no preflight; o autor do comentário vem da identidade verificada. Não seguir redirecionamentos nem expor o perfil bruto de `getMe`, tokens de projeto, conteúdo clínico desnecessário ou erros JSON-RPC brutos.
+- HTTPS é o padrão. `KANBOARD_ALLOWED_HTTP_URL` permite HTTP apenas para o endpoint exato configurado, sem aplicar a exceção a outras integrações. Isso não protege o tráfego: quem puder observá-lo na rede poderá ler a chave Basic e os dados e reutilizar a chave fora do MCP. Prefira TLS ou túnel criptografado.
 - Campos TFS customizados precisam estar no perfil YAML.
 - Listas vazias de páginas, categorias e diretórios de mídia significam acesso irrestrito ao escopo correspondente.
 - Quando configuradas, páginas WordPress precisam pertencer às raízes autorizadas e posts às categorias autorizadas.

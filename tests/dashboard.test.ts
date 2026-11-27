@@ -36,6 +36,8 @@ describe('development dashboard', () => {
         ...environment(),
         MCP_DASHBOARD_PORT: '0',
         MCP_DASHBOARD_OPEN: 'false',
+        KANBOARD_API_URL: '',
+        KANBOARD_API_KEY: '',
         WP_ALLOWED_MEDIA_ROOTS: '',
         ORACLE_CONNECT_STRING_DEV: '',
         ORACLE_USER_DEV: '',
@@ -62,7 +64,9 @@ describe('development dashboard', () => {
         tools: Array<{ name: string }>
         status: { modules: Array<{ id: string; details?: Record<string, unknown> }> }
       }
-      expect(overview.tools).toHaveLength(36)
+      expect(overview.tools).toHaveLength(41)
+      expect(overview.tools.some(tool => tool.name === 'kanboard_list_projects')).toBe(true)
+      expect(overview.status.modules.find(module => module.id === 'kanboard')).toMatchObject({ configured: false })
       expect(overview.tools.some(tool => tool.name === 'operations_apply')).toBe(true)
       expect(overview.tools.some(tool => tool.name === 'oracle_query')).toBe(true)
       expect(overview.status.modules.find(module => module.id === 'oracle')).toMatchObject({ configured: false })

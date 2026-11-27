@@ -7,7 +7,9 @@ if (process.env.MCP_LIVE_TESTS !== 'CONFIRMO_LEITURA') {
 }
 
 const config = loadConfig()
-const issues = Object.entries(config.configurationIssues)
+// Não exigir a nova integração em instalações que só usam os módulos anteriores.
+const kanboardRequested = Boolean(process.env.KANBOARD_API_URL?.trim() || process.env.KANBOARD_API_KEY?.trim())
+const issues = Object.entries(config.configurationIssues).filter(([id]) => id !== 'kanboard' || kanboardRequested)
 if (issues.length > 0) {
   throw new Error(`Configuração incompleta: ${issues.map(([module, names]) => `${module}: ${names.join(', ')}`).join('; ')}`)
 }

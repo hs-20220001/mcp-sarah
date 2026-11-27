@@ -23,6 +23,9 @@ O histórico inicial foi consolidado em **2026-10-02** a partir das [especifica�
 
 ### Adicionado
 
+- (2026-11-27) Integração Kanboard para listar projetos, listar tarefas abertas ou fechadas e consultar uma tarefa por ID. A chave é configurada localmente.
+- (2026-11-27) Relatórios de chamados com evidências, datas e estados nos dois sistemas, sem sincronização automática. Chave global somente leitura; contas pessoais podem comentar ou editar título/descrição mediante confirmação específica da identidade, do alvo e do conteúdo.
+- (2026-11-27) Kanboard aceita instalação legada HTTP apenas com autorização local para a URL exata e avisa sobre tráfego sem criptografia no status. HTTPS permanece o padrão.
 - Integração Oracle com perfis DEV/HOM/PRO, consultas `SELECT` parametrizadas, metadados de tabelas e funções de packages; allowlist por ambiente é opcional e vazia permite funções compatíveis; aliases TNS usam diretório configurável; não há ferramentas de escrita.
 - Modo Thick opcional para conexões Oracle cuja autenticação não é aceita pelo modo Thin, usando Oracle Instant Client configurado localmente.
 

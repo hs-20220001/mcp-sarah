@@ -22,7 +22,7 @@ Se ainda não existir um `.env`:
 Copy-Item .env.example .env
 ```
 
-Abra `.env` em um editor e preencha TFS e WordPress. Não envie esse arquivo para ninguém e não o adicione ao Git.
+Abra `.env` em um editor e preencha apenas as integrações que irá usar. Para o Kanboard, consulte a [configuração do endpoint e da chave](configuration.md#kanboard). Não envie esse arquivo para ninguém e não o adicione ao Git.
 
 ## 4. Abra o painel de orientação
 
@@ -30,7 +30,7 @@ Abra `.env` em um editor e preencha TFS e WordPress. Não envie esse arquivo par
 npm run dev
 ```
 
-O navegador abrirá `http://127.0.0.1:3333`. Deixe o terminal aberto enquanto usa o painel. Clique em **Testar conexões agora** para conferir TFS e WordPress sem realizar escritas. Pressione `Ctrl+C` no terminal quando terminar.
+O navegador abrirá `http://127.0.0.1:3333`. Deixe o terminal aberto enquanto usa o painel. Clique em **Testar conexões agora** para conferir as integrações configuradas sem realizar escritas. Pressione `Ctrl+C` no terminal quando terminar.
 
 Esse comando é útil para orientação e desenvolvimento, mas não precisa permanecer aberto para o Codex funcionar.
 
@@ -59,6 +59,8 @@ Abra `/mcp` e verifique se `mcp_sarah` aparece. Depois peça:
 Exemplos:
 
 - “Liste as áreas do TFS.”
+- “Liste os projetos do Kanboard e mostre as tarefas abertas do projeto que eu escolher.”
+- “Compare o andamento dos chamados desta coluna com o TFS. Separe o que avançou em cada sistema e o que não tem vínculo confirmado. Não altere nada.”
 - “Busque work items com a palavra cadastro.”
 - “Procure páginas WordPress sobre centro cirúrgico.”
 - “Liste as mídias WordPress relacionadas a manual.”

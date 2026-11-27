@@ -7,7 +7,7 @@
 ## Camadas
 
 1. **Núcleo:** configuração, erros, cliente HTTP, logger, snapshots e operações confirmáveis.
-2. **Módulos:** TFS, WordPress e Oracle possuem clientes e ferramentas próprios. Oracle não possui ferramentas de escrita.
+2. **Módulos:** TFS, WordPress, Oracle e Kanboard possuem clientes e ferramentas próprios. Oracle é somente leitura. O relatório Kanboard recebe do TFS apenas uma função de pesquisa; usa URLs como evidência, nunca como destino de rede. As mutações Kanboard só são publicadas com login pessoal e passam pelo núcleo de operações. O transporte Kanboard usa HTTPS, exceto em [endpoint HTTP explicitamente autorizado](configuration.md#kanboard).
 3. **Transporte:** apenas `stdio` para o protocolo MCP nesta fase.
 4. **Painel de desenvolvimento:** HTTP somente em loopback, para status, catálogo e orientação; não é um transporte MCP e não executa mutações.
 
@@ -15,7 +15,7 @@ Cada módulo implementa:
 
 ```ts
 interface IntegrationModule {
-  readonly id: 'tfs' | 'wordpress'
+  readonly id: 'tfs' | 'wordpress' | 'oracle' | 'kanboard'
   initialize(): Promise<void>
   registerTools(server: McpServer): void
   healthCheck(probe: boolean): Promise<ModuleHealth>

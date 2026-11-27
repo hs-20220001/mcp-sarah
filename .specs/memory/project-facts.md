@@ -5,6 +5,8 @@
 - Transporte inicial: MCP `stdio`; `stdout` pertence ao protocolo.
 - Integrações iniciais: TFS/Azure DevOps Server 2022 REST 7.0 e WordPress REST API.
 - Todas as integrações implementadas são registradas automaticamente; não existe seletor global de módulos.
+- Kanboard usa JSON-RPC 2.0 e HTTP Basic. `jsonrpc` é somente leitura; conta pessoal usa `getMyProjects` e pode preparar comentário ou edição de título/descrição. A aplicação exige identidade de `getMe` e aprovação específica do login, tarefa, campo e valor em ambos os modos globais.
+- Relatórios Kanboard/TFS pesquisam a tag exata `kid:<ID>` e URLs do projeto/instância em ambos os sentidos. Distinguem referências a outro cartão e indisponibilidade; não propagam estado entre sistemas.
 - Allowlists WordPress vazias significam escopo irrestrito; listas preenchidas são restritivas.
 - `npm run dev` abre um painel somente local para status, ferramentas e orientação.
 - O cliente de IA não precisa fornecer uma chave OpenAI ao servidor.
