@@ -67,6 +67,8 @@ Esse comando abre `http://127.0.0.1:3333` no navegador e mantém o painel ativo.
 
 Leia o [passo a passo para iniciantes](docs/getting-started.md) para a sequência completa.
 
+Para usar Claude no VS Code, consulte o [guia consolidado de instalação e configuração](docs/guia-vscode-claude.md), com opções para Claude Code e GitHub Copilot, variáveis obrigatórias/opcionais e diagnóstico.
+
 ## Configuração no Codex
 
 Primeiro execute `npm run build`. Depois adicione ao `~/.codex/config.toml`, ajustando o caminho absoluto:

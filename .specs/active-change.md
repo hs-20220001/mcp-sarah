@@ -1,9 +1,9 @@
 ---
-change: changes/kanboard-followup.md
+change: changes/guia-vscode-claude.md
 status: concluded
 updated: 2026-11-27
 ---
 
 # Mudança ativa
 
-Cruzar o andamento Kanboard/TFS e proteger as escritas pessoais no Kanboard.
+Documentar instalação e configuração do MCP Sarah no VS Code com Claude, para compartilhamento com um colega.
